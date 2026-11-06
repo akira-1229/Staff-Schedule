@@ -68,14 +68,7 @@
   }
 
   function lookup(value) {
-    const v = (value || '').trim();
-    const codes = CFG.codes || {};
-    if (!v) return { label: '予定なし', off: true, blank: true, code: '－', color: '#fff' };
-    if (codes[v]) return Object.assign({ code: v }, codes[v]);
-    // 「早」「早番」「早8:30」などは先頭の文字で判定
-    const key = Object.keys(codes).find((c) => v.startsWith(c) || codes[c].label === v);
-    if (key) return Object.assign({ code: key }, codes[key], { label: v.length > key.length ? v : codes[key].label });
-    return { label: v, code: v.slice(0, 2), color: '#dbeafe' };
+    return P.classify(value, CFG.codes);
   }
 
   let renderToken = 0;

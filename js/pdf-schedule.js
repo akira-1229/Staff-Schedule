@@ -178,7 +178,19 @@
     };
   }
 
-  const api = { extractDay, groupRows, splitItems };
+  /** PDFのセルの文字を、config.js の codes で意味づけする */
+  function classify(value, codes) {
+    const v = (value || '').trim();
+    codes = codes || {};
+    if (!v) return { label: '予定なし', off: true, blank: true, code: '－', color: '#fff' };
+    if (codes[v]) return Object.assign({ code: v }, codes[v]);
+    // 「早」「早番」「早8:30」などは先頭の文字で判定
+    const key = Object.keys(codes).find((c) => v.startsWith(c) || codes[c].label === v);
+    if (key) return Object.assign({ code: key }, codes[key], { label: v.length > key.length ? v : codes[key].label });
+    return { label: v, code: v.slice(0, 2), color: '#dbeafe' };
+  }
+
+  const api = { extractDay, groupRows, splitItems, classify };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PdfSchedule = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
