@@ -9,6 +9,10 @@ window.SCHEDULE_CONFIG = {
   //   例：2026年12月 → 2026-12.pdf
   pdfPath: '{yyyy}-{mm}.pdf',
 
+  // この日を過ぎても次月のPDFが無いと、画面にお知らせを出す
+  // （メール通知の日付は .github/workflows/next-month-reminder.yml）
+  remindAfterDay: 15,
+
   // PDFに書かれている記号の意味。
   //   off: true のものは「休み」として下にまとめて表示します。
   //   ここに無い記号は、PDFに書かれている文字をそのまま表示します。

@@ -205,5 +205,23 @@
     }
   }, 60 * 1000);
 
+  // 16日を過ぎても次月の勤務表PDFが無ければ、画面の上にお知らせを出す
+  async function checkNextMonth() {
+    const t = new Date();
+    if (t.getDate() <= (CFG.remindAfterDay || 15)) return;
+    const ny = t.getMonth() === 11 ? t.getFullYear() + 1 : t.getFullYear();
+    const nm = t.getMonth() === 11 ? 1 : t.getMonth() + 2;
+    const url = pdfUrl(ny, nm);
+    try {
+      const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      if (res.ok) return;
+    } catch (e) {
+      return; // 通信できないときは出さない
+    }
+    $('nextAlert').textContent = '⚠ ' + ny + '年' + nm + '月の勤務表（' + url + '）がまだアップされていません';
+    $('nextAlert').hidden = false;
+  }
+
   render();
+  checkNextMonth();
 })();

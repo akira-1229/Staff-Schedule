@@ -92,3 +92,4 @@ details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .pdf-wrap { overflow: auto; margin: 10px 0; max-height: 70vh; }
 .pdf-wrap canvas { width: 100%; height: auto; min-width: 600px; display: block; }
 footer { word-break: break-all; }
+.alert { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600; font-size: 15px; }
