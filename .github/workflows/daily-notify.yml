@@ -1,0 +1,77 @@
+# 毎朝、その日の全職員の勤務予定を GitHub の Issue にコメントして通知する。
+# notify-users.txt に書いた人を @メンションするので、GitHub アプリにプッシュ通知が届く。
+# 月ごとに「【毎朝のお知らせ】2026年11月の勤務予定」という Issue を作り、前の月のものは閉じる。
+name: 毎朝の勤務予定通知
+
+on:
+  schedule:
+    # 毎日 6:40（日本時間）= 21:40 UTC（前日）。GitHub の混雑で数分〜数十分遅れることがある
+    - cron: '40 21 * * *'
+  workflow_dispatch: # Actions 画面から手動で試せる
+    inputs:
+      date:
+        description: '日付（例 2026-11-06。空なら今日）'
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  LABEL: 今日の予定
+  NOTIFY_ON_CLOSED_DAYS: 'false' # 出勤者0人の日（休業日）も通知するなら 'true'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 今日の予定を読み取って通知
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DATE: ${{ github.event.inputs.date }}
+        run: |
+          set -euo pipefail
+          json=$(node scripts/daily-summary.js ${DATE:-} 2>/dev/null || true)
+          echo "$json"
+          [ -n "$json" ] || { echo "読み取り結果なし"; exit 1; }
+          status=$(echo "$json" | jq -r .status)
+          month=$(echo "$json" | jq -r .month)
+          if [ "$status" = "closed" ] && [ "$NOTIFY_ON_CLOSED_DAYS" != "true" ]; then
+            echo "出勤者0人の日なので通知しません"
+            exit 0
+          fi
+
+          mentions=$(grep -v '^\s*#' notify-users.txt | sed 's/#.*//' | tr -s ' \t\r' '\n' | grep -v '^$' | sed 's/^@//; s/^/@/' | paste -sd' ')
+          summary=$(echo "$json" | jq -r '.summary // empty')
+          body=$(echo "$json" | jq -r .body)
+
+          y=${month%-*}; m=$((10#${month#*-}))
+          title="【毎朝のお知らせ】${y}年${m}月の勤務予定"
+          gh label create "$LABEL" --color 1D76DB --description "毎朝の勤務予定通知" --force >/dev/null
+
+          # 前の月のお知らせを閉じる
+          gh issue list --state open --label "$LABEL" --json number,title \
+            -q ".[] | select(.title != \"$title\") | .number" | while read -r n; do
+            gh issue close "$n" --comment "月が変わったので閉じます。" >/dev/null && echo "closed #$n"
+          done
+
+          num=$(gh issue list --state open --label "$LABEL" --json number,title \
+            -q ".[] | select(.title == \"$title\") | .number" | head -1)
+          if [ -z "$num" ]; then
+            url=$(gh issue create --title "$title" --label "$LABEL" --body "毎朝その日の勤務予定をこの Issue にコメントします。
+          通知先は \`notify-users.txt\` で変更できます。
+          ページ: https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/")
+            num=${url##*/}
+            gh issue pin "$num" >/dev/null 2>&1 || true
+            echo "created #$num"
+          fi
+
+          printf '%s %s\n\n%s\n' "$mentions" "$summary" "$body" > comment.md
+          gh issue comment "$num" --body-file comment.md
+          echo "commented on #$num"
