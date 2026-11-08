@@ -1,0 +1,69 @@
+# アップロード忘れのお知らせ
+#   ・予定表：16日以降、次月の予定表がまだ無い
+#   ・班編成表：4月以降、その年度の班編成表がまだ無い
+# Issue を作って @メンションするので、メールと GitHub アプリに通知が届く。
+# 3日おきに再通知し、アップロードされたら自動で閉じる。
+name: アップロード忘れのお知らせ
+
+on:
+  schedule:
+    # 毎日 9:10（日本時間）= 0:10 UTC
+    - cron: '10 0 * * *'
+  push:
+    paths:
+      - 'data/manifest.json'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '日付（例 2026-11-16。空なら今日）'
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  LABEL: アップロードのお知らせ
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 必要なお知らせを確認
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          DATE: ${{ github.event.inputs.date }}
+        run: |
+          set -euo pipefail
+          node scripts/reminders.js ${DATE:-} > needed.jsonl
+          echo "必要なお知らせ:"; cat needed.jsonl || true
+          day=$(TZ=Asia/Tokyo date +%-d)
+          gh label create "$LABEL" --color FBCA04 --description "予定表・班編成表のアップロード忘れ" --force >/dev/null
+
+          gh issue list --state open --label "$LABEL" --limit 100 --json number,title > open.json
+
+          # もう必要なくなった（アップロードされた）お知らせを閉じる
+          jq -r '.[] | "\(.number)\t\(.title)"' open.json | while IFS=$'\t' read -r num title; do
+            if ! jq -e --arg t "$title" 'select(.title == $t)' needed.jsonl >/dev/null; then
+              gh issue close "$num" --comment "アップロードされたので閉じます。" >/dev/null && echo "closed #$num $title"
+            fi
+          done
+
+          # 新しいお知らせを作る／続いているものは3日おきに再通知
+          while read -r line; do
+            [ -n "$line" ] || continue
+            title=$(echo "$line" | jq -r .title)
+            body=$(echo "$line" | jq -r .body)
+            num=$(jq -r --arg t "$title" '.[] | select(.title == $t) | .number' open.json | head -1)
+            if [ -z "$num" ]; then
+              printf '@%s\n\n%s\n\nアップロードされると、このお知らせは自動で閉じます。\n' "$OWNER" "$body" > body.md
+              gh issue create --title "$title" --label "$LABEL" --body-file body.md
+              echo "created: $title"
+            elif [ $(( day % 3 )) -eq 0 ]; then
+              gh issue comment "$num" --body "@$OWNER まだアップロードされていません（$(TZ=Asia/Tokyo date +%-m/%-d) 時点）。"
+              echo "reminded #$num"
+            fi
+          done < needed.jsonl

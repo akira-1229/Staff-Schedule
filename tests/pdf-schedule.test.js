@@ -38,6 +38,35 @@ async function load(file) {
     const exp = [0, 1, 2].map((i) => ['', '早番', '休', '遅'][(d + i) % 4]);
     assert.deepStrictEqual(res.rows.map((r) => r.value), exp, d + '日の値');
   }
+  // 2か月分のPDF（ページごと / 1ページに上下 / 月の表題なし）
+  const CODES = ['早', '日', '遅', '休', '早', '日', '希', '遅', '有', '日'];
+  const code = (m, d, i) => CODES[(d + i * 3 + m) % CODES.length];
+  for (const file of ['sample-2months-pages.pdf', 'sample-2months-stacked.pdf', 'sample-2months-notitle.pdf']) {
+    const items = await load(file);
+    [[12, 0, 31], [1, 1, 31]].forEach(([m, monthIndex, n]) => {
+      for (let d = 1; d <= n; d++) {
+        const res = P.extractDay(items, d, { month: m, monthIndex, monthCount: 2 });
+        assert.ok(res, file + ' ' + m + '/' + d + 'を読み取れない');
+        assert.strictEqual(res.rows.length, 5, file + ' ' + m + '/' + d + ' の人数');
+        assert.deepStrictEqual(res.rows.map((r) => r.value), [0, 1, 2, 3, 4].map((i) => code(m, d, i)), file + ' ' + m + '/' + d + ' の値');
+      }
+    });
+  }
+
+  // 班編成表（縦並び / 横並び / 見出し形式）
+  const staff = ['山田 太郎', '佐藤 花子', '鈴木 一郎', '高橋 美咲', '田中 健'];
+  const expectTeams = {
+    'teams-columns.pdf': ['1班', '2班', '3班', '1班', '2班'],
+    'teams-rows.pdf': ['A班', 'B班', 'C班', 'A班', 'B班'],
+    'teams-sections.pdf': ['ひまわり班', 'さくら班', 'さくら班', 'ひまわり班', 'さくら班'],
+  };
+  for (const [file, exp] of Object.entries(expectTeams)) {
+    const t = P.extractTeams(await load(file));
+    assert.deepStrictEqual(staff.map((n) => P.teamOf(t, n)), exp, file + ' ' + JSON.stringify(t));
+    // 勤務表側で姓名がつながっていても一致する
+    assert.deepStrictEqual(staff.map((n) => P.teamOf(t, n.replace(' ', ''))), exp, file + '（空白なし）');
+  }
+
   console.log('OK: すべてのテストに合格しました');
 })().catch((e) => {
   console.error('NG:', e.message);

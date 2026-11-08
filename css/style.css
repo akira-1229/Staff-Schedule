@@ -43,7 +43,6 @@ main { max-width: 640px; margin: 0 auto; padding: 16px; }
 .need { color: var(--muted); font-size: 14px; }
 .need.short { color: var(--red); font-weight: 700; }
 .need.short::after { content: " 人数不足"; }
-.note { background: #fef9c3; border-radius: 10px; padding: 10px 14px; margin: 8px 0; white-space: pre-wrap; }
 h2 { font-size: 15px; color: var(--muted); margin: 18px 4px 8px; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .list li {
@@ -92,4 +91,66 @@ details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .pdf-wrap { overflow: auto; margin: 10px 0; max-height: 70vh; }
 .pdf-wrap canvas { width: 100%; height: auto; min-width: 600px; display: block; }
 footer { word-break: break-all; }
-.alert { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600; font-size: 15px; }
+
+/* ヘッダーの設定ボタン */
+.top-row { display: flex; align-items: center; justify-content: center; position: relative; min-height: 28px; }
+.gear {
+  position: absolute; right: -4px; top: -6px;
+  width: 44px; height: 44px; border: 0; border-radius: 999px;
+  background: rgba(255,255,255,.2); color: #fff; font-size: 22px; cursor: pointer;
+}
+
+/* お知らせ */
+.alert {
+  display: block; width: 100%; text-align: left; cursor: pointer; font: inherit;
+  background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 10px; font-weight: 600; font-size: 15px;
+}
+.alert small { display: block; font-weight: 400; font-size: 12px; margin-top: 2px; }
+
+/* 班 */
+.team-summary { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 4px; }
+.team-chip { background: #e0e7ff; color: #3730a3; border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+.who small.team { color: #4338ca; font-weight: 600; }
+
+/* 設定 */
+body.no-scroll { overflow: hidden; }
+.sheet {
+  position: fixed; inset: 0; z-index: 10; overflow-y: auto;
+  background: var(--bg); padding: 0 16px 40px;
+}
+.sheet[hidden] { display: none; }
+.sheet-head {
+  position: sticky; top: 0; z-index: 1; background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: 640px; margin: 0 auto; padding: 14px 0 8px;
+}
+.sheet-head h2 { margin: 0; font-size: 20px; color: var(--text); }
+.close { width: 44px; height: 44px; border: 0; border-radius: 999px; background: #e2e8f0; font-size: 18px; cursor: pointer; }
+.card { background: var(--card); border-radius: 14px; padding: 14px 16px; margin: 12px auto; max-width: 640px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.card h3 { margin: 0 0 6px; font-size: 16px; }
+.desc { font-size: 13px; color: var(--muted); margin: 4px 0 10px; line-height: 1.6; }
+.desc.center { text-align: center; }
+.field { display: block; font-size: 14px; margin: 8px 0; }
+.field select { display: block; width: 100%; margin-top: 4px; padding: 10px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; }
+.radio { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; font-size: 15px; }
+.radio input { width: 18px; height: 18px; }
+.file { display: block; margin: 10px 0; }
+.file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.file span {
+  display: block; text-align: center; padding: 14px; border: 2px dashed #94a3b8; border-radius: 12px;
+  color: var(--accent); font-weight: 600; cursor: pointer; word-break: break-all;
+}
+.check { font-size: 14px; margin: 6px 0 10px; }
+.check ul, .status { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.check li { font-size: 13px; color: var(--muted); }
+.check li.ok, .status li.ok { color: #15803d; }
+.check li.ng, .status li.ng { color: var(--red); }
+.status li { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+.status a { color: inherit; }
+.card button { font: inherit; padding: 12px 16px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; }
+.card button.primary { width: 100%; background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+.card button.primary:disabled { opacity: .45; cursor: default; }
+.card button.ghost { border-color: transparent; color: var(--muted); }
+.card .row { display: flex; gap: 8px; margin-top: 8px; }
+.text { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 10px; }
