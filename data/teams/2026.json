@@ -21,8 +21,8 @@
      "name": "福井聡",
      "surname": "福井",
      "role": "二輪",
-     "mark": "○",
-     "quals": "ド"
+     "mark": "◎",
+     "quals": "F"
     },
     {
      "name": "河野圭吾",
@@ -32,8 +32,8 @@
      "quals": "学・F・危"
     },
     {
-     "name": "中山大二",
-     "surname": "中山",
+     "name": "遠山大輔",
+     "surname": "遠山",
      "role": "普通",
      "mark": "",
      "quals": "F・危"
@@ -46,8 +46,8 @@
      "quals": ""
     },
     {
-     "name": "考友侍了",
-     "surname": "考友",
+     "name": "堀友佳子",
+     "surname": "堀",
      "role": "受付事務",
      "mark": "",
      "quals": ""
@@ -58,11 +58,11 @@
    "name": "2班",
    "members": [
     {
-     "name": "山下質一",
+     "name": "山下賢一",
      "surname": "山下",
      "role": "休日出勤の受付",
-     "mark": "○",
-     "quals": ""
+     "mark": "◎",
+     "quals": "学"
     },
     {
      "name": "井上友仁",
@@ -79,11 +79,11 @@
      "quals": "準・F・危"
     },
     {
-     "name": "鵜飼克医",
+     "name": "鵜飼克匡",
      "surname": "鵜飼",
      "role": "二輪",
      "mark": "",
-     "quals": "コッ"
+     "quals": "F"
     },
     {
      "name": "西岡大樹",
@@ -97,7 +97,7 @@
      "surname": "片山",
      "role": "普通",
      "mark": "",
-     "quals": "ドF・危"
+     "quals": "F・危"
     },
     {
      "name": "近藤旭",
@@ -105,6 +105,13 @@
      "role": "普通",
      "mark": "",
      "quals": "(普自二)"
+    },
+    {
+     "name": "長野茜",
+     "surname": "長野",
+     "role": "普通",
+     "mark": "",
+     "quals": ""
     },
     {
      "name": "伊藤里歌子",
@@ -122,22 +129,22 @@
      "name": "辻知明",
      "surname": "辻",
      "role": "休日出勤の受付",
-     "mark": "○",
-     "quals": "』"
+     "mark": "◎",
+     "quals": ""
     },
     {
      "name": "若山尚樹",
      "surname": "若山",
      "role": "大・中・準中型(副)",
      "mark": "",
-     "quals": ""
+     "quals": "大・F"
     },
     {
      "name": "三宅孝宣",
      "surname": "三宅",
      "role": "二輪",
      "mark": "○",
-     "quals": ""
+     "quals": "F"
     },
     {
      "name": "坪井勇一",
