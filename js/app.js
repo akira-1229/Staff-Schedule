@@ -475,6 +475,79 @@
     }
   }, 60 * 1000);
 
+  // ---------------- ホーム画面に追加（アプリとして使う） ----------------
+
+  const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  const LATER_KEY = 'staff-schedule-install-later';
+  let installEvent = null;
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  function laterUntil() {
+    try {
+      return Number(localStorage.getItem(LATER_KEY)) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function showInstall() {
+    const box = $('install');
+    if (standalone || Date.now() < laterUntil()) {
+      box.hidden = true;
+      return;
+    }
+    let body = '';
+    if (installEvent) {
+      body = '<button class="install-btn" id="installBtn">ホーム画面に追加する</button>';
+    } else if (isIOS) {
+      body =
+        '<ol><li>画面下（iPadは右上）の <b>共有ボタン</b>（□に↑）を押す</li>' +
+        '<li><b>「ホーム画面に追加」</b>を押す（見つからなければ下にスクロール）</li>' +
+        '<li>右上の<b>「追加」</b>を押す</li></ol>';
+    } else if (isAndroid) {
+      body = '<ol><li>右上の <b>︙（メニュー）</b>を押す</li><li><b>「ホーム画面に追加」</b>または<b>「アプリをインストール」</b>を押す</li></ol>';
+    } else {
+      box.hidden = true; // PCなどでは出さない
+      return;
+    }
+    box.innerHTML =
+      '<div class="install-head"><img src="icons/icon-192.png" alt=""><div><b>ホーム画面に追加して、アプリとして使えます</b>' +
+      '<small>アイコンをタップするだけで今日の予定が開きます</small></div></div>' + body +
+      '<button class="install-later" id="installLater">あとで</button>';
+    box.hidden = false;
+    const btn = $('installBtn');
+    if (btn) {
+      btn.onclick = async () => {
+        installEvent.prompt();
+        const r = await installEvent.userChoice;
+        installEvent = null;
+        if (r && r.outcome === 'accepted') box.hidden = true;
+        else showInstall();
+      };
+    }
+    $('installLater').onclick = () => {
+      try {
+        localStorage.setItem(LATER_KEY, String(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      } catch (e) {
+        /* 保存できない環境 */
+      }
+      box.hidden = true;
+    };
+  }
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installEvent = e;
+    showInstall();
+  });
+  window.addEventListener('appinstalled', () => ($('install').hidden = true));
+  showInstall();
+
   window.__appStarted = true;
   loadManifest().then(() => {
     renderAlerts();

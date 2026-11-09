@@ -5,9 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="勤務予定">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <meta name="robots" content="noindex, nofollow">
   <title>今日の勤務予定</title>
-  <link rel="stylesheet" href="css/style.css?v=20261109">
+  <link rel="stylesheet" href="css/style.css?v=20261109b">
 </head>
 <body>
   <header>
@@ -27,6 +33,7 @@
   </header>
 
   <main>
+    <div id="install" class="install" hidden></div>
     <div id="alerts"></div>
     <p class="loading" id="loading">勤務表を読み込み中…</p>
     <div class="summary" id="summary"></div>
@@ -88,7 +95,7 @@
 
     <section class="card">
       <h3>GitHubの鍵（アップロードする人だけ）</h3>
-      <p class="desc">アップロードには、GitHub で作った鍵（トークン）が必要です。鍵はこの端末の中だけに保存されます。作り方は「はじめに_やること.md」を見てください。</p>
+      <p class="desc">アップロードには、GitHub で作った鍵（トークン）が必要です。鍵はこの端末の中だけに保存されます。<b>ホーム画面のアプリとブラウザでは保存場所が別</b>なので、ふだん使う方（アプリ）で入れてください。作り方は「はじめに_やること.md」を見てください。</p>
       <input type="password" id="token" class="text" placeholder="github_pat_…" autocomplete="off">
       <div class="row">
         <button id="saveToken">保存して確認</button>
@@ -111,10 +118,10 @@
     });
   </script>
   <script src="lib/pdfjs/pdf.min.js"></script>
-  <script src="config.js?v=20261109"></script>
-  <script src="js/holidays.js?v=20261109"></script>
-  <script src="js/pdf-schedule.js?v=20261109"></script>
-  <script src="js/store.js?v=20261109"></script>
-  <script src="js/app.js?v=20261109"></script>
+  <script src="config.js?v=20261109b"></script>
+  <script src="js/holidays.js?v=20261109b"></script>
+  <script src="js/pdf-schedule.js?v=20261109b"></script>
+  <script src="js/store.js?v=20261109b"></script>
+  <script src="js/app.js?v=20261109b"></script>
 </body>
 </html>

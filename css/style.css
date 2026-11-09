@@ -156,3 +156,14 @@ body.no-scroll { overflow: hidden; }
 .text { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 10px; }
 .months { background: #f8fafc; border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
 .months .radio { margin: 4px 16px 4px 0; }
+
+/* ホーム画面に追加の案内 */
+.install { background: #fff; border: 2px solid var(--accent); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
+.install-head { display: flex; gap: 10px; align-items: center; }
+.install-head img { width: 44px; height: 44px; border-radius: 10px; flex: none; }
+.install-head small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.install ol { margin: 10px 0 4px; padding-left: 1.4em; line-height: 1.7; }
+.install-btn { display: block; width: 100%; margin-top: 10px; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.install-later { display: block; margin: 6px 0 0 auto; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+/* アプリとして開いたとき（iPhoneの上の時計などと重ならないように） */
+header { padding-top: calc(16px + env(safe-area-inset-top)); }
