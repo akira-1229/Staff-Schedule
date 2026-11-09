@@ -64,21 +64,39 @@
    *   work: [{ name, team, role, mark, quals }], off: [{ ..., reason }]
    * }
    */
-  function dayStatus(day, teamsData) {
+  function dayStatus(day, teamsData, opts) {
     day = day || {};
+    opts = opts || {};
     const han = day.han || { teams: [], teiji: false };
     const marks = {};
-    (han.teams || []).forEach((t) => (marks[teamNo(t.team)] = t.kind));
+    (han.teams || []).forEach((t) => (marks[teamNo(t.team)] = t));
 
     const teamList = teamsData && teamsData.teams && teamsData.teams.length
       ? teamsData.teams.map((t) => t.name)
       : Object.keys(marks).sort().map((n) => n + '班');
 
     const statusOf = (teamName) => {
-      const kind = marks[teamNo(teamName)];
+      const mark = marks[teamNo(teamName)];
+      const kind = mark && mark.kind;
       if (day.closed) return kind === '出勤' ? { working: true, reason: '休日出勤' } : { working: false, reason: '休校日' };
       if (kind === '振休' || kind === '班休') return { working: false, reason: kind };
       return { working: true, reason: '' };
+    };
+
+    /**
+     * 振休・休日出勤が班と逆になる人（config.js の reverseMembers）
+     *   (n)休（振休）の日 → 出勤、(n)出（休日出勤）の日 → 休み
+     *   ②出（丸数字の出）・ⓝ休（班休）・印の無い日 → 班と同じ
+     */
+    const reverse = (opts.reverseMembers || []).map((x) => String(x).replace(/[\s\u3000]/g, ''));
+    const isReverse = (m) => reverse.length && reverse.includes(String(m.name || '').replace(/[\s\u3000]/g, ''));
+    const memberStatus = (teamName, m, st) => {
+      if (!isReverse(m)) return st;
+      const mark = marks[teamNo(teamName)];
+      if (!mark) return st;
+      if (mark.kind === '振休') return { working: true, reason: '', special: '班は振休・本人は出勤' };
+      if (mark.kind === '出勤' && !mark.circled) return { working: false, reason: '休み', special: '班は休日出勤・本人は休み' };
+      return st;
     };
 
     const teams = teamList.map((name) => Object.assign({ name }, statusOf(name)));
@@ -86,9 +104,10 @@
     if (teamsData && teamsData.teams) {
       const names = displayNames(teamsData);
       teamsData.teams.forEach((t) => {
-        const st = statusOf(t.name);
-        (t.members || []).forEach((m) => {
-          const p = Object.assign({ team: t.name }, m, { display: names.get(m) });
+        const tst = statusOf(t.name);
+        (t.members || []).forEach((m, i) => {
+          const st = memberStatus(t.name, m, tst);
+          const p = Object.assign({ team: t.name, order: i }, m, { display: names.get(m), working: st.working }, st.special ? { special: st.special } : {});
           if (st.working) work.push(p);
           else off.push(Object.assign(p, { reason: st.reason }));
         });

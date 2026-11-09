@@ -311,3 +311,10 @@ h2 { font-size: 15px; color: var(--muted); margin: 18px 4px 8px; }
 .viewer-body { max-width: 1000px; margin: 0 auto; overflow: auto; }
 .viewer-body img, .viewer-body canvas { display: block; width: 100%; height: auto; margin: 0 auto 10px; background: #fff; border-radius: 6px; }
 .viewer-body.zoom img, .viewer-body.zoom canvas { width: 220%; max-width: none; }
+
+/* 班と違う動きの人（例：班は振休・本人は出勤） */
+.pgroup .pname.p-on { border-color: var(--on-line); background: var(--on-bg); color: var(--on-fg); font-weight: 700; }
+.pgroup .pname.p-off { border-color: var(--off-line); background: var(--off-bg); color: var(--off-fg); font-weight: 500; }
+.pname sup { font-size: 10px; margin-left: 2px; font-weight: 700; }
+.pname.p-on sup { color: var(--on-strong); }
+.pname.p-off sup { color: var(--off-strong); }

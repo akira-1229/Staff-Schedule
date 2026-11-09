@@ -65,4 +65,19 @@ assert.deepStrictEqual(['小原直人', '福井 聡', '堀 友佳子', '辻 知�
 assert.deepStrictEqual([...L.displayNames({ teams: [{ name: '1班', members: [{ name: '福井聡', surname: '福井' }, { name: '福井里菜' }, { name: '小原直人' }] }] }).values()], ['福井(聡)', '福井(里)', '小原']);
 assert.deepStrictEqual(TI.splitMark('◎辻　知明'), { mark: '◎', name: '辻知明', surname: '辻' });
 
+// 振休・休日出勤が班と逆になる人（近藤さん）
+assert.strictEqual(han('②出'), JSON.stringify({ teams: [{ team: '2', kind: '出勤', circled: true }], teiji: false }));
+assert.strictEqual(SI.hanText(SI.parseHan('②出 (2)出 ②休 (2)休')), '②出 (2)出 ②休 (2)休');
+const t2 = { teams: [{ name: '2班', members: [{ name: '近藤旭' }, { name: '西岡大樹' }] }, { name: '1班', members: [{ name: '小原直人' }] }] };
+const rev = (raw, closed) => {
+  const r = L.dayStatus({ closed: !!closed, han: SI.parseHan(raw) }, t2, { reverseMembers: ['近藤 旭'] });
+  return r.work.map((p) => p.name).sort().join(',') + ' / 休:' + r.off.map((p) => p.name).sort().join(',');
+};
+assert.strictEqual(rev('(2)休'), '小原直人,近藤旭 / 休:西岡大樹'); // 班は振休 → 近藤は出勤
+assert.strictEqual(rev('(2)出', true), '西岡大樹 / 休:小原直人,近藤旭'); // 班は休日出勤 → 近藤は休み
+assert.strictEqual(rev('②出', true), '西岡大樹,近藤旭 / 休:小原直人'); // ②出 → ふつうどおり出勤
+assert.strictEqual(rev('②休'), '小原直人 / 休:西岡大樹,近藤旭'); // 班休 → ふつうどおり休み
+assert.strictEqual(rev(''), '小原直人,西岡大樹,近藤旭 / 休:'); // 印なし → ふつうどおり
+assert.strictEqual(L.dayStatus({ han: SI.parseHan('(2)休') }, t2).work.length, 1); // 設定が無ければ班と同じ
+
 console.log('OK: すべてのテストに合格しました');

@@ -85,7 +85,7 @@
     const day = (data.days || []).find((x) => x.d === d);
     if (!day) return showMessage(m + '月' + d + '日の予定が見つかりませんでした。');
 
-    const st = L.dayStatus(day, teams);
+    const st = L.dayStatus(day, teams, { reverseMembers: CFG.reverseMembers });
     document.body.dataset.dow = st.closed || holiday ? 0 : view.getDay();
 
     const badges = [];
@@ -126,15 +126,18 @@
     const teams = st.teams.slice().sort((a, b) => (Number(L.teamNo(a.name)) || 99) - (Number(L.teamNo(b.name)) || 99));
     return teams
       .map((t) => {
-        const ps = people.filter((p) => p.team === t.name);
+        const ps = people.filter((p) => p.team === t.name).sort((a, b) => a.order - b.order); // 体制表の並び順のまま
         const label = t.working ? t.reason || '出勤' : t.reason || '休み';
         return (
           '<div class="pgroup ' + (t.working ? 'on' : 'off') + '"><div class="pg-head"><b>' + esc(t.name) + '</b>' +
           '<em>' + esc(label) + '</em><span>' + ps.length + '人</span></div>' +
           '<div class="pg-names">' +
           ps.map((p) => {
-            const info = [p.name, p.role, p.quals].filter(Boolean).join('　');
-            return '<button type="button" class="pname" title="' + esc(info) + '" data-info="' + esc(info) + '">' + (p.mark ? '<i>' + esc(p.mark) + '</i>' : '') + esc(p.display || p.name) + '</button>';
+            const info = [p.name, p.role, p.quals, p.special].filter(Boolean).join('　');
+            // 班と違う動きの人（振休の日に出勤など）は、本人の出勤・休みの色にして「出」「休」を付ける
+            const diff = p.working !== t.working;
+            return '<button type="button" class="pname' + (diff ? (p.working ? ' p-on' : ' p-off') : '') + '" title="' + esc(info) + '" data-info="' + esc(info) + '">' +
+              (p.mark ? '<i>' + esc(p.mark) + '</i>' : '') + esc(p.display || p.name) + (diff ? '<sup>' + (p.working ? '出' : '休') + '</sup>' : '') + '</button>';
           }).join('') +
           '</div></div>'
         );
@@ -378,7 +381,7 @@
 
   function hanChips(raw) {
     const h = ScheduleImage.parseHan(raw);
-    const chips = h.teams.map((t) => '<span class="chip ' + (t.kind === '出勤' ? 'on' : 'off') + '">' + esc(t.team) + '班 ' + esc(t.kind) + '</span>');
+    const chips = h.teams.map((t) => '<span class="chip ' + (t.kind === '出勤' ? 'on' : 'off') + '">' + esc(t.team) + '班 ' + esc(t.kind) + (t.circled ? '（丸数字）' : '') + '</span>');
     if (h.teiji) chips.push('<span class="chip">全員定時</span>');
     if (!chips.length && String(raw || '').trim()) chips.push('<span class="chip warn">読み取れない書き方です</span>');
     return chips.join('');
@@ -617,7 +620,7 @@
   function hanTags(han) {
     const out = [];
     ((han && han.teams) || []).forEach((t) => {
-      if (t.kind === '出勤') out.push('<span class="tag on">(' + esc(t.team) + ')出</span>');
+      if (t.kind === '出勤') out.push('<span class="tag on">' + (t.circled ? CIRC[Number(t.team) - 1] || esc(t.team) : '(' + esc(t.team) + ')') + '出</span>');
       else if (t.kind === '振休') out.push('<span class="tag off">(' + esc(t.team) + ')休</span>');
       else out.push('<span class="tag off">' + (CIRC[Number(t.team) - 1] || esc(t.team)) + '休</span>');
     });
