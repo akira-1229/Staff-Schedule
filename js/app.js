@@ -206,7 +206,8 @@
     const t = new Date();
     const out = [];
     const next = S.addMonths(t.getFullYear(), t.getMonth() + 1, 1);
-    if (t.getDate() > (CFG.remindAfterDay || 15) && !S.scheduleFor(manifest, next.y, next.m)) {
+    // 今日から見た次月の予定表が未提出なら表示（日付の条件なし）
+    if (!S.scheduleFor(manifest, next.y, next.m)) {
       out.push(next.y + '年' + next.m + '月の予定表がまだアップロードされていません');
     }
     const fy = S.fiscalYear(t);
@@ -247,19 +248,6 @@
     $('status').innerHTML = lines.map(([k, v, ok]) => '<li class="' + (ok ? 'ok' : 'ng') + '"><span>' + (ok ? '✓' : '！') + ' ' + k + '</span><span>' + v + '</span></li>').join('');
   }
 
-  // 何月から（今月・来月・再来月。初期値は来月）
-  (function fillMonths() {
-    const t = new Date();
-    const sel = $('schStart');
-    for (let i = 0; i <= 2; i++) {
-      const a = S.addMonths(t.getFullYear(), t.getMonth() + 1, i);
-      const o = document.createElement('option');
-      o.value = S.monthKey(a.y, a.m);
-      o.textContent = a.y + '年' + a.m + '月' + (i === 0 ? '（今月）' : i === 1 ? '（来月）' : '');
-      if (i === 1) o.selected = true;
-      sel.appendChild(o);
-    }
-  })();
   // 年度（初期値：4〜12月は今年度、1〜2月は今年度、3月は来年度）
   (function fillYears() {
     const t = new Date();
@@ -275,15 +263,20 @@
     });
   })();
 
+  /** チェックされた月（古い順） */
   function selectedMonths() {
-    const [y, m] = $('schStart').value.split('-').map(Number);
-    const n = Number(document.querySelector('input[name=schCount]:checked').value);
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      const a = S.addMonths(y, m, i);
-      out.push(S.monthKey(a.y, a.m));
-    }
-    return out;
+    return [...document.querySelectorAll('#schMonths input:checked')].map((c) => c.value).sort();
+  }
+
+  /** PDFに年が書かれていない月は、今日に一番近い年にする */
+  function monthKeyFor(m, y) {
+    if (y) return S.monthKey(y, m);
+    const t = new Date();
+    const now = t.getFullYear() * 12 + t.getMonth();
+    const best = [t.getFullYear() - 1, t.getFullYear(), t.getFullYear() + 1].sort(
+      (a, b) => Math.abs(a * 12 + m - 1 - now) - Math.abs(b * 12 + m - 1 - now)
+    )[0];
+    return S.monthKey(best, m);
   }
 
   const picked = { sch: null, team: null };
@@ -296,8 +289,29 @@
     return { name: f.name, bytes, parsed: await parsePdf(bytes) };
   }
 
-  // 予定表：選んだらその場で読み取りを確認する
-  async function checkSchedule() {
+  // 予定表：選んだら何月の予定表かを読み取り、月ごとに読み取れるか確認する
+  function showMonths() {
+    const box = $('schMonths');
+    const detected = P.detectMonths(picked.sch.parsed.items).map((d) => monthKeyFor(d.month, d.year));
+    const t = new Date();
+    const keys = new Set(detected);
+    for (let i = 0; i <= 2; i++) {
+      const a = S.addMonths(t.getFullYear(), t.getMonth() + 1, i);
+      keys.add(S.monthKey(a.y, a.m));
+    }
+    const next = S.addMonths(t.getFullYear(), t.getMonth() + 1, 1);
+    const checked = detected.length ? detected : [S.monthKey(next.y, next.m)];
+    box.innerHTML =
+      '<p class="desc">' + (detected.length ? 'PDFから読み取った月にチェックしています。違っていたら直してください。' : 'PDFに月が書かれていませんでした。<b>何月の予定表か</b>チェックしてください。') + '</p>' +
+      [...keys]
+        .sort()
+        .map((k) => '<label class="radio"><input type="checkbox" value="' + k + '"' + (checked.includes(k) ? ' checked' : '') + '> ' + monthLabel(k) + '</label>')
+        .join('');
+    box.hidden = false;
+    box.querySelectorAll('input').forEach((c) => (c.onchange = checkSchedule));
+  }
+
+  function checkSchedule() {
     const box = $('schCheck');
     if (!picked.sch) {
       box.innerHTML = '';
@@ -305,12 +319,18 @@
       return;
     }
     const months = selectedMonths();
+    if (!months.length) {
+      box.innerHTML = '<ul><li class="ng">！ 何月の予定表かチェックしてください</li></ul>';
+      $('schUpload').disabled = true;
+      return;
+    }
     const lines = months.map((key, i) => {
       const m = Number(key.split('-')[1]);
       const res = P.extractDay(picked.sch.parsed.items, 1, { month: m, monthIndex: i, monthCount: months.length });
+      const replace = S.scheduleFor(manifest, ...key.split('-').map(Number)) ? '（登録済みのものと差し替え）' : '';
       return res
-        ? '<li class="ok">✓ ' + monthLabel(key) + '：' + res.rows.length + '人の予定を読み取れました</li>'
-        : '<li class="ng">！ ' + monthLabel(key) + '：表を読み取れませんでした（月の選び方・PDFを確認してください）</li>';
+        ? '<li class="ok">✓ ' + monthLabel(key) + '：' + res.rows.length + '人の予定を読み取れました' + replace + '</li>'
+        : '<li class="ng">！ ' + monthLabel(key) + '：表を読み取れませんでした（月のチェック・PDFを確認してください）</li>';
     });
     picked.sch.ok = !lines.some((l) => l.includes('class="ng"'));
     box.innerHTML = '<ul>' + lines.join('') + '</ul>';
@@ -318,6 +338,7 @@
   }
   $('schFile').onchange = async () => {
     $('schCheck').textContent = '読み取り中…';
+    $('schMonths').hidden = true;
     try {
       picked.sch = await readFile($('schFile'), $('schFileName'));
     } catch (e) {
@@ -325,10 +346,10 @@
       $('schCheck').textContent = 'PDFを開けませんでした：' + e.message;
       return;
     }
+    if (!picked.sch) return checkSchedule();
+    showMonths();
     checkSchedule();
   };
-  $('schStart').onchange = checkSchedule;
-  document.querySelectorAll('input[name=schCount]').forEach((r) => (r.onchange = checkSchedule));
 
   // 班編成表：班と人数を表示
   async function checkTeams() {
@@ -390,6 +411,7 @@
       docs[file] = Promise.resolve(p.parsed);
       picked[kind] = null;
       $(kind === 'sch' ? 'schFile' : 'teamFile').value = '';
+      if (kind === 'sch') $('schMonths').hidden = true;
       $(kind === 'sch' ? 'schFileName' : 'teamFileName').textContent = 'PDFを選ぶ';
       $(kind === 'sch' ? 'schCheck' : 'teamCheck').innerHTML = '<ul><li class="ok">✓ アップロードしました。ほかの端末やスマホには1〜2分で反映されます。</li></ul>';
       renderStatus();

@@ -3,13 +3,12 @@
 //
 //   node scripts/reminders.js [YYYY-MM-DD]
 //
-// ・予定表：16日以降、次月の予定表がまだ無い
+// ・予定表：今日から見た次月の予定表がまだ無い（日付の条件なし）
 // ・班編成表：4月以降、その年度の班編成表がまだ無い（4月中にアップロードする決まり）
 const fs = require('fs');
 const path = require('path');
 const S = require('../js/store.js');
 
-const REMIND_AFTER_DAY = 15; // 予定表：この日を過ぎたら通知
 const ROOT = path.join(__dirname, '..');
 const PAGE = 'https://akira-1229.github.io/Staff-Schedule/';
 
@@ -24,7 +23,7 @@ const how = '予定表アプリ右上の ⚙（設定）からアップロード
 const out = [];
 
 const next = S.addMonths(y, m, 1);
-if (d > REMIND_AFTER_DAY && !S.scheduleFor(manifest, next.y, next.m)) {
+if (!S.scheduleFor(manifest, next.y, next.m)) {
   out.push({
     title: '【予定表】' + S.monthKey(next.y, next.m) + ' の予定表がまだアップロードされていません',
     body: next.y + '年' + next.m + '月の予定表がまだアップロードされていません。\n\n' + how,

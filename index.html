@@ -62,18 +62,12 @@
 
     <section class="card">
       <h3>予定表のアップロード</h3>
-      <p class="desc">次月の予定表（PDF）をアップロードします。2か月分が1つのPDFになっている場合は「2か月分」を選んでください。</p>
-      <label class="field">何月から
-        <select id="schStart"></select>
-      </label>
-      <div class="field">
-        <label class="radio"><input type="radio" name="schCount" value="1" checked> 1か月分</label>
-        <label class="radio"><input type="radio" name="schCount" value="2"> 2か月分</label>
-      </div>
+      <p class="desc">予定表（PDF）を選ぶと、何月の予定表かを自動で読み取ります。2か月分が1つのPDFになっていても、そのまま選んでください。</p>
       <label class="file">
         <input type="file" id="schFile" accept="application/pdf,.pdf">
         <span id="schFileName">PDFを選ぶ</span>
       </label>
+      <div class="months" id="schMonths" hidden></div>
       <div class="check" id="schCheck"></div>
       <button class="primary" id="schUpload" disabled>アップロード</button>
     </section>

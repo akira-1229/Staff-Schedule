@@ -8,10 +8,6 @@ window.SCHEDULE_CONFIG = {
   // アップロード先（GitHub のリポジトリ）
   github: { owner: 'akira-1229', repo: 'Staff-Schedule', branch: 'main' },
 
-  // この日を過ぎても次月の予定表が無いと、画面にお知らせを出す
-  // （メール・アプリ通知の日付は scripts/reminders.js の REMIND_AFTER_DAY）
-  remindAfterDay: 15,
-
   // PDFに書かれている記号の意味。
   //   off: true のものは「休み」として下にまとめて表示します。
   //   ここに無い記号は、PDFに書かれている文字をそのまま表示します。
