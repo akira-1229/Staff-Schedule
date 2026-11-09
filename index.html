@@ -20,7 +20,7 @@
       if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th;
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="css/style.css?v=20261110a">
+  <link rel="stylesheet" href="css/style.css?v=20261110b">
 </head>
 <body>
   <header>
@@ -55,10 +55,8 @@
       <div class="info" id="tekiyoBox"><h3>摘要</h3><p id="tekiyo"></p></div>
       <div class="info" id="forkBox"><h3>フォーク</h3><ul id="fork"></ul></div>
       <div id="people">
-        <h2>出勤 <span id="workCount"></span></h2>
-        <div class="pgroups" id="work"></div>
-        <h2>休み <span id="offCount"></span></h2>
-        <div class="pgroups off" id="off"></div>
+        <h2>出勤 <span id="workCount"></span>・休み <span id="offCount"></span></h2>
+        <div class="pgroups" id="teamsPeople"></div>
       </div>
       <p class="desc center" id="noTeams" hidden>体制表をアップロードすると、出勤・休みの人の一覧が出ます。</p>
       <p class="desc center"><button type="button" class="link-btn" id="sourceLink">元の予定表を見る</button></p>
@@ -178,13 +176,13 @@
     });
   </script>
   <script src="lib/pdfjs/pdf.min.js"></script>
-  <script src="config.js?v=20261110a"></script>
-  <script src="js/holidays.js?v=20261110a"></script>
-  <script src="js/day-logic.js?v=20261110a"></script>
-  <script src="js/table-image.js?v=20261110a"></script>
-  <script src="js/schedule-image.js?v=20261110a"></script>
-  <script src="js/teams-image.js?v=20261110a"></script>
-  <script src="js/store.js?v=20261110a"></script>
-  <script src="js/app.js?v=20261110a"></script>
+  <script src="config.js?v=20261110b"></script>
+  <script src="js/holidays.js?v=20261110b"></script>
+  <script src="js/day-logic.js?v=20261110b"></script>
+  <script src="js/table-image.js?v=20261110b"></script>
+  <script src="js/schedule-image.js?v=20261110b"></script>
+  <script src="js/teams-image.js?v=20261110b"></script>
+  <script src="js/store.js?v=20261110b"></script>
+  <script src="js/app.js?v=20261110b"></script>
 </body>
 </html>
