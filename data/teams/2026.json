@@ -1,0 +1,190 @@
+{
+ "teams": [
+  {
+   "name": "1班",
+   "members": [
+    {
+     "name": "小原直人",
+     "surname": "小原",
+     "role": "休日出勤の受付",
+     "mark": "○",
+     "quals": "危"
+    },
+    {
+     "name": "長村三男",
+     "surname": "長村",
+     "role": "大・中・準中型(副)",
+     "mark": "",
+     "quals": "中・F"
+    },
+    {
+     "name": "福井聡",
+     "surname": "福井",
+     "role": "二輪",
+     "mark": "○",
+     "quals": "ド"
+    },
+    {
+     "name": "河野圭吾",
+     "surname": "河野",
+     "role": "日曜二輪",
+     "mark": "",
+     "quals": "学・F・危"
+    },
+    {
+     "name": "中山大二",
+     "surname": "中山",
+     "role": "普通",
+     "mark": "",
+     "quals": "F・危"
+    },
+    {
+     "name": "福井里菜",
+     "surname": "福井",
+     "role": "普通",
+     "mark": "",
+     "quals": ""
+    },
+    {
+     "name": "考友侍了",
+     "surname": "考友",
+     "role": "受付事務",
+     "mark": "",
+     "quals": ""
+    }
+   ]
+  },
+  {
+   "name": "2班",
+   "members": [
+    {
+     "name": "山下質一",
+     "surname": "山下",
+     "role": "休日出勤の受付",
+     "mark": "○",
+     "quals": ""
+    },
+    {
+     "name": "井上友仁",
+     "surname": "井上",
+     "role": "大・中・準中型(主)",
+     "mark": "○",
+     "quals": "二種・F・危"
+    },
+    {
+     "name": "大庭華佳",
+     "surname": "大庭",
+     "role": "大・中・準中型(副)",
+     "mark": "",
+     "quals": "準・F・危"
+    },
+    {
+     "name": "鵜飼克医",
+     "surname": "鵜飼",
+     "role": "二輪",
+     "mark": "",
+     "quals": "コッ"
+    },
+    {
+     "name": "西岡大樹",
+     "surname": "西岡",
+     "role": "日曜二輪",
+     "mark": "",
+     "quals": "学・F"
+    },
+    {
+     "name": "片山明彦",
+     "surname": "片山",
+     "role": "普通",
+     "mark": "",
+     "quals": "ドF・危"
+    },
+    {
+     "name": "近藤旭",
+     "surname": "近藤",
+     "role": "普通",
+     "mark": "",
+     "quals": "(普自二)"
+    },
+    {
+     "name": "伊藤里歌子",
+     "surname": "伊藤",
+     "role": "受付事務",
+     "mark": "",
+     "quals": ""
+    }
+   ]
+  },
+  {
+   "name": "3班",
+   "members": [
+    {
+     "name": "辻知明",
+     "surname": "辻",
+     "role": "休日出勤の受付",
+     "mark": "○",
+     "quals": "』"
+    },
+    {
+     "name": "若山尚樹",
+     "surname": "若山",
+     "role": "大・中・準中型(副)",
+     "mark": "",
+     "quals": ""
+    },
+    {
+     "name": "三宅孝宣",
+     "surname": "三宅",
+     "role": "二輪",
+     "mark": "○",
+     "quals": ""
+    },
+    {
+     "name": "坪井勇一",
+     "surname": "坪井",
+     "role": "日曜二輪",
+     "mark": "",
+     "quals": "学・F"
+    },
+    {
+     "name": "光武敬史",
+     "surname": "光武",
+     "role": "普通",
+     "mark": "",
+     "quals": "F"
+    },
+    {
+     "name": "渡辺雅子",
+     "surname": "渡辺",
+     "role": "普通",
+     "mark": "",
+     "quals": ""
+    },
+    {
+     "name": "松浦光",
+     "surname": "松浦",
+     "role": "普通",
+     "mark": "",
+     "quals": "(二輪見習)・危"
+    },
+    {
+     "name": "田島隆英",
+     "surname": "田島",
+     "role": "受付事務",
+     "mark": "",
+     "quals": ""
+    },
+    {
+     "name": "赤尾里美",
+     "surname": "赤尾",
+     "role": "受付事務",
+     "mark": "",
+     "quals": ""
+    }
+   ]
+  }
+ ],
+ "year": 2026,
+ "source": "teams/2026.jpg",
+ "confirmedAt": "2026-11-09T10:05:56.384Z"
+}
