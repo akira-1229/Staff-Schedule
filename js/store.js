@@ -106,7 +106,7 @@
     const res = await api(cfg, token, '');
     if (!res.ok) throw new Error(await explain(res));
     const repo = await res.json();
-    if (repo.permissions && !repo.permissions.push) throw new Error('この鍵では書き込みができません（Contents: Read and write が必要です）。');
+    if (!repo.permissions || !repo.permissions.push) throw new Error('この鍵では書き込みができません（Contents: Read and write が必要です）。');
     return repo;
   }
 
