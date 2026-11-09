@@ -103,6 +103,32 @@
     return out;
   }
 
+  /**
+   * 月日の列をまとめて読み、書かれている数字と行の番号の差（何行ずれているか）を多数決で求める
+   * 例：1行目の位置に「3」と書いてあれば、行の位置が2行ずれている
+   */
+  async function dateShift(c, ocr, dateCol, rows, count) {
+    const top = Math.max(0, rows.y0 - 3 * rows.step);
+    const bottom = Math.min(c.height, rows.y0 + (count + 3) * rows.step);
+    const k = 2;
+    const im = upscale(T.crop(c, dateCol[0] + 4, top, dateCol[1] - 4, bottom, 0), k);
+    await ocr.setParameters({ tessedit_pageseg_mode: '6', tessedit_char_whitelist: '0123456789' });
+    const { data } = await ocr.recognize(margin(blackWhite(im), 24));
+    const votes = {};
+    (data.words || []).forEach((wd) => {
+      const n = Number((wd.text || '').replace(/\D/g, ''));
+      if (!n || n > 31 || wd.confidence < 40) return;
+      const cy = top + ((wd.bbox.y0 + wd.bbox.y1) / 2 - 24) / k;
+      const row = Math.floor((cy - rows.y0) / rows.step);
+      const off = row - (n - 1);
+      if (Math.abs(off) <= 4) votes[off] = (votes[off] || 0) + 1;
+    });
+    const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
+    if (root.__ocrDebug) root.__ocrDebug.push(['dateShift', votes]);
+    // 3つ以上の日付が同じずれを示したときだけ直す
+    return best && best[1] >= 3 ? Number(best[0]) : 0;
+  }
+
   /** 和暦・西暦の「〇年〇月」 */
   function parseYearMonth(text) {
     const t = String(text || '').normalize('NFKC').replace(/\s/g, '');
@@ -413,6 +439,13 @@
     const left = inner[0], right = inner[inner.length - 1];
     const cols = fitColumns(grid.cols, left, right);
     if (!cols) throw new Error('表の列（記事・摘要・班など）を見つけられませんでした。表全体が写るように撮り直してください。');
+
+    // 「月日」の列の数字（1, 2, 3 …）を読んで、行の位置が日付とずれていないか確かめる
+    progress(0.08, '日付の列を確かめています…');
+    if (opts && opts.testOffset) rows.y0 += opts.testOffset * rows.step; // テスト用：わざと行をずらす
+    const shift = await dateShift(c, ocr, cols.date, rows, count);
+    if (shift) rows.y0 += shift * rows.step;
+    rows.shift = shift;
 
     // 各行の上下：予想位置の近くに本物の線があればそれに合わせる（紙のゆがみ対策）
     const lineAt = (k) => {
