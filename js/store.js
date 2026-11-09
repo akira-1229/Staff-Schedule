@@ -1,11 +1,12 @@
 /**
  * アップロードされたファイルの管理
  *
- * data/manifest.json に、アップロード済みのファイルを記録する：
+ * data/manifest.json に、アップロード済みのものを記録する：
  * {
- *   "schedules": [{ "file": "schedules/2026-12_2027-01.pdf", "months": ["2026-12", "2027-01"], "name": "元のファイル名.pdf", "uploadedAt": "..." }],
- *   "teams":     [{ "file": "teams/2026.pdf", "year": 2026, "name": "...", "uploadedAt": "..." }]
+ *   "schedules": [{ "month": "2026-11", "data": "data/schedules/2026-11.json", "file": "schedules/2026-11.pdf", "name": "元のファイル名", "uploadedAt": "..." }],
+ *   "teams":     [{ "year": 2026, "data": "data/teams/2026.json", "file": "teams/2026.jpg", "name": "...", "uploadedAt": "..." }]
  * }
+ * file = アップロードした元の画像・PDF、data = 確認画面で確定した内容（アプリはこちらを使う）
  * 班編成表の year は「年度」（4月始まり）。
  */
 (function (root) {
@@ -41,11 +42,10 @@
   /** その月を含む予定表（同じ月が複数あれば、後からアップロードしたもの） */
   function scheduleFor(manifest, y, m) {
     const key = monthKey(y, m);
-    const list = normalize(manifest).schedules.filter((s) => (s.months || []).includes(key));
+    const list = normalize(manifest).schedules.filter((s) => s.month === key);
     if (!list.length) return null;
     list.sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
-    const entry = list[0];
-    return { entry, month: m, monthIndex: entry.months.indexOf(key), monthCount: entry.months.length };
+    return { entry: list[0], month: m };
   }
 
   /** その日に使う班編成表（その年度のもの。まだ無ければ前の年度のもの） */
@@ -173,36 +173,58 @@
     return manifest;
   }
 
-  /** 予定表をアップロード（months: ['2026-12'] または ['2026-12', '2027-01']） */
-  async function uploadSchedule(cfg, token, bytes, months, name) {
-    const file = 'schedules/' + months.join('_') + '.pdf';
-    const label = months.map((k) => k.replace('-', '年').replace(/^(\d+)年0?(\d+)$/, '$1年$2月')).join('・');
-    await putFile(cfg, token, file, bytes, '予定表をアップロード：' + label);
+  function extOf(name) {
+    const m = String(name || '').toLowerCase().match(/\.(pdf|jpe?g|png|heic|webp)$/);
+    return m ? (m[1] === 'jpeg' ? 'jpg' : m[1]) : 'jpg';
+  }
+  function jsonBytes(obj) {
+    return new TextEncoder().encode(JSON.stringify(obj, null, 1) + '\n');
+  }
+  function monthLabel(key) {
+    const [y, m] = key.split('-').map(Number);
+    return y + '年' + m + '月';
+  }
+
+  /**
+   * 予定表を保存：元のファイル1つ ＋ 確定した月ごとのデータ
+   * file: { bytes, name }、months: [{ month: '2026-11', data: {...} }]
+   */
+  async function uploadSchedule(cfg, token, file, months) {
+    const keys = months.map((x) => x.month);
+    const label = keys.map(monthLabel).join('・');
+    const src = 'schedules/' + keys.join('_') + '.' + extOf(file.name);
+    await putFile(cfg, token, src, file.bytes, '予定表の元ファイル：' + label);
+    for (const x of months) {
+      const data = Object.assign({}, x.data, { month: x.month, source: src, confirmedAt: new Date().toISOString() });
+      await putFile(cfg, token, 'data/schedules/' + x.month + '.json', jsonBytes(data), '予定表を確定：' + monthLabel(x.month));
+    }
     return updateManifest(
       cfg,
       token,
       (m) => {
-        m.schedules = m.schedules.filter((s) => s.file !== file);
-        m.schedules.push({ file, months, name, uploadedAt: new Date().toISOString() });
-        m.schedules.sort((a, b) => a.months[0].localeCompare(b.months[0]));
+        m.schedules = m.schedules.filter((s) => !keys.includes(s.month));
+        keys.forEach((k) => m.schedules.push({ month: k, data: 'data/schedules/' + k + '.json', file: src, name: file.name, uploadedAt: new Date().toISOString() }));
+        m.schedules.sort((a, b) => a.month.localeCompare(b.month));
       },
       '予定表の登録を更新：' + label
     );
   }
 
-  /** 班編成表をアップロード（year: 年度） */
-  async function uploadTeams(cfg, token, bytes, year, name) {
-    const file = 'teams/' + year + '.pdf';
-    await putFile(cfg, token, file, bytes, '班編成表をアップロード：' + year + '年度');
+  /** 体制表（班編成表）を保存：元のファイル ＋ 確定したデータ（year: 年度） */
+  async function uploadTeams(cfg, token, file, year, data) {
+    const src = 'teams/' + year + '.' + extOf(file.name);
+    await putFile(cfg, token, src, file.bytes, '体制表の元ファイル：' + year + '年度');
+    const json = 'data/teams/' + year + '.json';
+    await putFile(cfg, token, json, jsonBytes(Object.assign({}, data, { year: Number(year), source: src, confirmedAt: new Date().toISOString() })), '体制表を確定：' + year + '年度');
     return updateManifest(
       cfg,
       token,
       (m) => {
         m.teams = m.teams.filter((t) => Number(t.year) !== Number(year));
-        m.teams.push({ file, year: Number(year), name, uploadedAt: new Date().toISOString() });
+        m.teams.push({ year: Number(year), data: json, file: src, name: file.name, uploadedAt: new Date().toISOString() });
         m.teams.sort((a, b) => a.year - b.year);
       },
-      '班編成表の登録を更新：' + year + '年度'
+      '体制表の登録を更新：' + year + '年度'
     );
   }
 

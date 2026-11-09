@@ -33,8 +33,8 @@ if (!S.scheduleFor(manifest, next.y, next.m)) {
 const fy = S.fiscalYear(new Date(y, m - 1, d));
 if (m >= 4 && !manifest.teams.some((t) => Number(t.year) === fy)) {
   out.push({
-    title: '【班編成表】' + fy + '年度の班編成表がまだアップロードされていません',
-    body: fy + '年度の班編成表がまだアップロードされていません（毎年4月中にアップロードする決まりです）。\n\n' + how,
+    title: '【体制表】' + fy + '年度の体制表（班編成）がまだアップロードされていません',
+    body: fy + '年度の体制表（班編成）がまだアップロードされていません（毎年4月中にアップロードする決まりです）。\n\n' + how,
   });
 }
 

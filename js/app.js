@@ -3,10 +3,11 @@
   const CFG = window.SCHEDULE_CONFIG || {};
   const GH = CFG.github || {};
   const H = window.JPHolidays;
-  const P = window.PdfSchedule;
   const S = window.ScheduleStore;
+  const L = window.DayLogic;
   const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
   const PDFJS = new URL('lib/pdfjs/', location.href).href;
+  const TESS = new URL('lib/tesseract/', location.href).href;
   const $ = (id) => document.getElementById(id);
 
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
@@ -18,7 +19,7 @@
   view.setHours(0, 0, 0, 0);
 
   let manifest = S.emptyManifest();
-  const docs = {}; // ファイルのパス -> Promise<{ doc, items } | { error }>
+  const jsonCache = {}; // パス -> Promise<データ | null>
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -42,48 +43,21 @@
     }
   }
 
-  async function parsePdf(bytes) {
-    const doc = await pdfjsLib.getDocument({
-      data: bytes.slice(), // pdf.js が中身を移動させるので複製を渡す
-      cMapUrl: PDFJS + 'cmaps/',
-      cMapPacked: true,
-      standardFontDataUrl: PDFJS + 'standard_fonts/',
-    }).promise;
-    const items = [];
-    for (let p = 1; p <= doc.numPages; p++) {
-      const tc = await (await doc.getPage(p)).getTextContent();
-      tc.items.forEach((it) => {
-        if (it.str) items.push({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width, h: it.height || Math.abs(it.transform[3]), page: p });
-      });
+  function loadJson(path) {
+    if (!jsonCache[path]) {
+      jsonCache[path] = fetch(path + '?t=' + Date.now(), { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
     }
-    return { doc, items };
+    return jsonCache[path];
   }
 
-  function loadDoc(file) {
-    if (!docs[file]) {
-      docs[file] = (async () => {
-        if (!window.pdfjsLib) return { error: 'PDF読み込み用の部品（lib/pdfjs）が見つかりません。' };
-        try {
-          const res = await fetch(file + '?t=' + Date.now(), { cache: 'no-store' });
-          if (!res.ok) return { error: 'ファイル（' + file + '）を取得できませんでした。アップロード直後は1〜2分お待ちください。' };
-          return await parsePdf(new Uint8Array(await res.arrayBuffer()));
-        } catch (e) {
-          return { error: 'PDFを読み込めませんでした：' + e.message };
-        }
-      })();
-    }
-    return docs[file];
-  }
-
-  async function teamDataFor(date) {
+  async function teamsDataFor(date) {
     const t = S.teamsFor(manifest, date);
-    if (!t) return null;
-    const d = await loadDoc(t.entry.file);
-    if (d.error) return null;
-    return Object.assign(P.extractTeams(d.items), { year: t.entry.year, current: t.current });
+    return t ? loadJson(t.entry.data) : null;
   }
 
-  // ---------------- 表示 ----------------
+  // ---------------- 今日の予定 ----------------
 
   let renderToken = 0;
   async function render() {
@@ -97,67 +71,58 @@
     $('date').textContent = y + '年' + m + '月' + d + '日（' + WEEK[view.getDay()] + '）' + (isToday(view) ? ' 今日' : '');
     $('holiday').textContent = holiday;
     $('todayBtn').hidden = isToday(view);
-    document.body.dataset.dow = holiday ? 0 : view.getDay();
     document.title = m + '/' + d + ' 勤務予定';
-
     $('loading').hidden = false;
-    $('lists').hidden = true;
     $('message').hidden = true;
-    $('summary').textContent = '';
-    $('teamSummary').textContent = '';
-    $('pdfBox').hidden = true;
+    $('day').hidden = true;
 
     const sch = S.scheduleFor(manifest, y, m);
-    if (!sch) {
-      $('loading').hidden = true;
-      $('source').textContent = '';
-      showMessage(y + '年' + m + '月の予定表がまだアップロードされていません。\n右上の ⚙（設定）からアップロードしてください。');
-      return;
-    }
-    const [month, teamData] = await Promise.all([loadDoc(sch.entry.file), teamDataFor(view)]);
+    const [data, teams] = await Promise.all([sch ? loadJson(sch.entry.data) : null, teamsDataFor(view)]);
     if (token !== renderToken) return;
     $('loading').hidden = true;
-    $('source').textContent = '予定表：' + (sch.entry.name || sch.entry.file) + (teamData ? '　班編成：' + teamData.year + '年度' : '');
+    if (!sch) return showMessage(y + '年' + m + '月の予定表がまだアップロードされていません。\n右上の ⚙（設定）からアップロードしてください。');
+    if (!data) return showMessage('予定表のデータを読み込めませんでした。アップロード直後は1〜2分お待ちください。');
+    const day = (data.days || []).find((x) => x.d === d);
+    if (!day) return showMessage(m + '月' + d + '日の予定が見つかりませんでした。');
 
-    if (month.error) {
-      showMessage(month.error);
-      return;
+    const st = L.dayStatus(day, teams);
+    document.body.dataset.dow = st.closed || holiday ? 0 : view.getDay();
+
+    const badges = [];
+    if (st.closed) badges.push('<span class="badge-big closed">休校日</span>');
+    if (st.teiji) badges.push('<span class="badge-big teiji">全員定時</span>');
+    $('badges').innerHTML = badges.join('');
+
+    $('teamStatus').innerHTML = st.teams
+      .map((t) => '<div class="team ' + (t.working ? 'on' : 'off') + '"><b>' + esc(t.name) + '</b><span>' + (t.working ? esc(t.reason || '出勤') : esc(t.reason || '休み')) + '</span></div>')
+      .join('');
+
+    $('kiji').textContent = st.kiji;
+    $('kijiBox').hidden = !st.kiji;
+    $('tekiyo').textContent = st.tekiyo;
+    $('tekiyoBox').hidden = !st.tekiyo;
+    $('fork').innerHTML = st.fork.map((f) => '<li><span>' + esc(f.label) + '</span><b>' + esc(f.word) + '</b></li>').join('');
+    $('forkBox').hidden = !st.fork.length;
+
+    const hasPeople = !!(teams && teams.teams && teams.teams.length);
+    $('people').hidden = !hasPeople;
+    $('noTeams').hidden = hasPeople;
+    if (hasPeople) {
+      $('workCount').textContent = st.work.length + '人';
+      $('offCount').textContent = st.off.length + '人';
+      $('work').innerHTML = st.work.map(person).join('') || '<li class="none">出勤者なし</li>';
+      $('off').innerHTML = st.off.map(person).join('') || '<li class="none">休みの人はいません</li>';
     }
-
-    const res = P.extractDay(month.items, d, sch);
-    $('pdfBox').hidden = false;
-    $('pdfLink').href = sch.entry.file;
-    drawPdf(month.doc, res, token);
-
-    if (!res) {
-      showMessage('PDFから表を読み取れませんでした。下の「予定表PDFで確認する」から見てください。\n（スキャンした画像のPDFは文字を読み取れません）');
-      $('pdfBox').open = true;
-      return;
-    }
-
-    const rows = res.rows.map((r) => ({ name: r.name, s: P.classify(r.value, CFG.codes), team: teamData ? P.teamOf(teamData, r.name) : '' }));
-    // 班 → 元の並び順
-    const teamOrder = teamData ? teamData.teams.map((t) => t.name) : [];
-    const rank = (r) => (r.team ? teamOrder.indexOf(r.team) : 999);
-    const work = rows.filter((r) => !r.s.off).sort((a, b) => rank(a) - rank(b));
-    const off = rows.filter((r) => r.s.off);
-
-    $('summary').innerHTML = '<b>' + work.length + '</b>人 出勤　<span>休み ' + off.length + '人</span>';
-    if (teamData && teamData.teams.length) {
-      $('teamSummary').innerHTML = teamOrder
-        .map((t) => '<span class="team-chip">' + esc(t) + ' ' + work.filter((r) => r.team === t).length + '人</span>')
-        .join('');
-    }
-    $('work').innerHTML = work.map(item).join('') || '<li class="none">出勤者なし</li>';
-    $('off').innerHTML = off.map(item).join('') || '<li class="none">休みの人はいません</li>';
-    $('lists').hidden = false;
+    $('sourceLink').href = data.source || sch.entry.file;
+    $('day').hidden = false;
   }
 
-  function item(r) {
+  function person(p) {
     return (
-      '<li style="--c:' + esc(r.s.color || '#dbeafe') + '"><span class="badge">' + esc(r.s.code) + '</span>' +
-      '<span class="who"><b>' + esc(r.name) + '</b>' + (r.team ? '<small class="team">' + esc(r.team) + '</small>' : '') + '</span>' +
-      '<span class="time">' + esc(r.s.label) + (r.s.time ? '<br><b>' + esc(r.s.time) + '</b>' : '') + '</span></li>'
+      '<li><span class="badge">' + esc(String(p.team || '').replace('班', '')) + '</span>' +
+      '<span class="who"><b>' + (p.mark ? '<i>' + esc(p.mark) + '</i>' : '') + esc(p.display || p.name) + '</b>' +
+      '<small>' + esc([p.role, p.quals].filter(Boolean).join('　')) + '</small></span>' +
+      '<span class="time">' + esc(p.reason || p.team || '') + '</span></li>'
     );
   }
 
@@ -166,73 +131,40 @@
     $('message').hidden = false;
   }
 
-  async function drawPdf(doc, res, token) {
-    const wrap = $('pdfWrap');
-    wrap.innerHTML = '';
-    const page = await doc.getPage(res ? res.page : 1);
-    if (token !== renderToken) return;
-    const base = page.getViewport({ scale: 1 });
-    const scale = Math.min(2.5, Math.max(1, ((wrap.clientWidth || 600) * 2) / base.width));
-    const vp = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = vp.width;
-    canvas.height = vp.height;
-    wrap.appendChild(canvas);
-    const ctx = canvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
-    if (!res || token !== renderToken) return;
-    const c = res.column;
-    const [x1, y1] = vp.convertToViewportPoint(c.x, c.top);
-    const [x2, y2] = vp.convertToViewportPoint(c.x + c.w, c.bottom);
-    const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.18)';
-    ctx.strokeStyle = 'rgba(37, 99, 235, 0.9)';
-    ctx.lineWidth = 2;
-    ctx.fillRect(rx, ry, rw, rh);
-    ctx.strokeRect(rx, ry, rw, rh);
-    // 今日の表の部分だけを切り出して表示
-    const top = Math.max(0, ry - 60 * scale);
-    const bottom = Math.min(canvas.height, ry + rh + 40 * scale);
-    const crop = document.createElement('canvas');
-    crop.width = canvas.width;
-    crop.height = bottom - top;
-    crop.getContext('2d').drawImage(canvas, 0, top, canvas.width, crop.height, 0, 0, canvas.width, crop.height);
-    wrap.replaceChild(crop, canvas);
-  }
-
   // ---------------- お知らせ（未アップロード） ----------------
 
   function renderAlerts() {
     const t = new Date();
     const out = [];
     const next = S.addMonths(t.getFullYear(), t.getMonth() + 1, 1);
-    // 今日から見た次月の予定表が未提出なら表示（日付の条件なし）
-    if (!S.scheduleFor(manifest, next.y, next.m)) {
-      out.push(next.y + '年' + next.m + '月の予定表がまだアップロードされていません');
-    }
+    // 今日から見た次月の予定表が未提出なら表示
+    if (!S.scheduleFor(manifest, next.y, next.m)) out.push(next.y + '年' + next.m + '月の予定表がまだアップロードされていません');
     const fy = S.fiscalYear(t);
     const month = t.getMonth() + 1;
     if (month >= 4 && !manifest.teams.some((x) => Number(x.year) === fy)) {
-      out.push(fy + '年度の班編成表がまだアップロードされていません' + (month === 4 ? '（4月中にアップロードしてください）' : ''));
+      out.push(fy + '年度の体制表がまだアップロードされていません' + (month === 4 ? '（4月中にアップロードしてください）' : ''));
     }
     $('alerts').innerHTML = out.map((m) => '<button class="alert" data-open-settings>⚠ ' + esc(m) + '<small>タップしてアップロード</small></button>').join('');
     $('alerts').querySelectorAll('[data-open-settings]').forEach((b) => (b.onclick = openSettings));
   }
 
-  // ---------------- 設定・アップロード ----------------
+  // ---------------- 設定 ----------------
 
+  function openSheet(id) {
+    $(id).hidden = false;
+    document.body.classList.add('no-scroll');
+  }
+  function closeSheet(id) {
+    $(id).hidden = true;
+    if ($('settings').hidden && $('confirm').hidden) document.body.classList.remove('no-scroll');
+  }
   function openSettings() {
     renderStatus();
     $('token').value = S.getToken();
-    $('settings').hidden = false;
-    document.body.classList.add('no-scroll');
-  }
-  function closeSettings() {
-    $('settings').hidden = true;
-    document.body.classList.remove('no-scroll');
+    openSheet('settings');
   }
   $('openSettings').onclick = openSettings;
-  $('closeSettings').onclick = closeSettings;
+  $('closeSettings').onclick = () => closeSheet('settings');
 
   function renderStatus() {
     const t = new Date();
@@ -244,188 +176,9 @@
     }
     const fy = S.fiscalYear(t);
     const team = manifest.teams.find((x) => Number(x.year) === fy);
-    lines.push([fy + '年度の班編成表', team ? '<a href="' + esc(team.file) + '" target="_blank" rel="noopener">登録済み</a>' : '未登録', !!team]);
+    lines.push([fy + '年度の体制表', team ? '<a href="' + esc(team.file) + '" target="_blank" rel="noopener">登録済み</a>' : '未登録', !!team]);
     $('status').innerHTML = lines.map(([k, v, ok]) => '<li class="' + (ok ? 'ok' : 'ng') + '"><span>' + (ok ? '✓' : '！') + ' ' + k + '</span><span>' + v + '</span></li>').join('');
   }
-
-  // 年度（初期値：4〜12月は今年度、1〜2月は今年度、3月は来年度）
-  (function fillYears() {
-    const t = new Date();
-    const fy = S.fiscalYear(t);
-    const def = t.getMonth() + 1 === 3 ? fy + 1 : fy;
-    const sel = $('teamYear');
-    [fy - 1, fy, fy + 1].forEach((y) => {
-      const o = document.createElement('option');
-      o.value = y;
-      o.textContent = y + '年度（' + y + '年4月〜' + (y + 1) + '年3月）';
-      if (y === def) o.selected = true;
-      sel.appendChild(o);
-    });
-  })();
-
-  /** チェックされた月（古い順） */
-  function selectedMonths() {
-    return [...document.querySelectorAll('#schMonths input:checked')].map((c) => c.value).sort();
-  }
-
-  /** PDFに年が書かれていない月は、今日に一番近い年にする */
-  function monthKeyFor(m, y) {
-    if (y) return S.monthKey(y, m);
-    const t = new Date();
-    const now = t.getFullYear() * 12 + t.getMonth();
-    const best = [t.getFullYear() - 1, t.getFullYear(), t.getFullYear() + 1].sort(
-      (a, b) => Math.abs(a * 12 + m - 1 - now) - Math.abs(b * 12 + m - 1 - now)
-    )[0];
-    return S.monthKey(best, m);
-  }
-
-  const picked = { sch: null, team: null };
-
-  async function readFile(input, nameEl) {
-    const f = input.files[0];
-    if (!f) return null;
-    nameEl.textContent = f.name;
-    const bytes = new Uint8Array(await f.arrayBuffer());
-    return { name: f.name, bytes, parsed: await parsePdf(bytes) };
-  }
-
-  // 予定表：選んだら何月の予定表かを読み取り、月ごとに読み取れるか確認する
-  function showMonths() {
-    const box = $('schMonths');
-    const detected = P.detectMonths(picked.sch.parsed.items).map((d) => monthKeyFor(d.month, d.year));
-    const t = new Date();
-    const keys = new Set(detected);
-    for (let i = 0; i <= 2; i++) {
-      const a = S.addMonths(t.getFullYear(), t.getMonth() + 1, i);
-      keys.add(S.monthKey(a.y, a.m));
-    }
-    const next = S.addMonths(t.getFullYear(), t.getMonth() + 1, 1);
-    const checked = detected.length ? detected : [S.monthKey(next.y, next.m)];
-    box.innerHTML =
-      '<p class="desc">' + (detected.length ? 'PDFから読み取った月にチェックしています。違っていたら直してください。' : 'PDFに月が書かれていませんでした。<b>何月の予定表か</b>チェックしてください。') + '</p>' +
-      [...keys]
-        .sort()
-        .map((k) => '<label class="radio"><input type="checkbox" value="' + k + '"' + (checked.includes(k) ? ' checked' : '') + '> ' + monthLabel(k) + '</label>')
-        .join('');
-    box.hidden = false;
-    box.querySelectorAll('input').forEach((c) => (c.onchange = checkSchedule));
-  }
-
-  function checkSchedule() {
-    const box = $('schCheck');
-    if (!picked.sch) {
-      box.innerHTML = '';
-      $('schUpload').disabled = true;
-      return;
-    }
-    const months = selectedMonths();
-    if (!months.length) {
-      box.innerHTML = '<ul><li class="ng">！ 何月の予定表かチェックしてください</li></ul>';
-      $('schUpload').disabled = true;
-      return;
-    }
-    const lines = months.map((key, i) => {
-      const m = Number(key.split('-')[1]);
-      const res = P.extractDay(picked.sch.parsed.items, 1, { month: m, monthIndex: i, monthCount: months.length });
-      const replace = S.scheduleFor(manifest, ...key.split('-').map(Number)) ? '（登録済みのものと差し替え）' : '';
-      return res
-        ? '<li class="ok">✓ ' + monthLabel(key) + '：' + res.rows.length + '人の予定を読み取れました' + replace + '</li>'
-        : '<li class="ng">！ ' + monthLabel(key) + '：表を読み取れませんでした（月のチェック・PDFを確認してください）</li>';
-    });
-    picked.sch.ok = !lines.some((l) => l.includes('class="ng"'));
-    box.innerHTML = '<ul>' + lines.join('') + '</ul>';
-    $('schUpload').disabled = false;
-  }
-  $('schFile').onchange = async () => {
-    $('schCheck').textContent = '読み取り中…';
-    $('schMonths').hidden = true;
-    try {
-      picked.sch = await readFile($('schFile'), $('schFileName'));
-    } catch (e) {
-      picked.sch = null;
-      $('schCheck').textContent = 'PDFを開けませんでした：' + e.message;
-      return;
-    }
-    if (!picked.sch) return checkSchedule();
-    showMonths();
-    checkSchedule();
-  };
-
-  // 班編成表：班と人数を表示
-  async function checkTeams() {
-    const box = $('teamCheck');
-    if (!picked.team) {
-      box.innerHTML = '';
-      $('teamUpload').disabled = true;
-      return;
-    }
-    const t = P.extractTeams(picked.team.parsed.items);
-    picked.team.ok = t.teams.length > 0;
-    box.innerHTML = t.teams.length
-      ? '<ul><li class="ok">✓ ' + t.teams.length + 'つの班を読み取れました</li>' +
-        t.teams.map((x) => '<li>' + esc(x.name) + '：' + esc(x.members.join(' ')) + '</li>').join('') + '</ul>'
-      : '<ul><li class="ng">！ 班を読み取れませんでした（PDFはそのまま保存され、画面から開けます）</li></ul>';
-    $('teamUpload').disabled = false;
-  }
-  $('teamFile').onchange = async () => {
-    $('teamCheck').textContent = '読み取り中…';
-    try {
-      picked.team = await readFile($('teamFile'), $('teamFileName'));
-    } catch (e) {
-      picked.team = null;
-      $('teamCheck').textContent = 'PDFを開けませんでした：' + e.message;
-      return;
-    }
-    checkTeams();
-  };
-
-  function needToken() {
-    const t = S.getToken();
-    if (!t) {
-      alert('先に、下の「GitHubの鍵」を入れて「保存して確認」を押してください。');
-      $('token').focus();
-    }
-    return t;
-  }
-
-  async function doUpload(button, kind) {
-    const token = needToken();
-    if (!token) return;
-    const p = picked[kind];
-    if (!p.ok && !confirm('読み取れない部分があります。このままアップロードしますか？')) return;
-    const label = button.textContent;
-    button.disabled = true;
-    button.textContent = 'アップロード中…';
-    try {
-      let file;
-      if (kind === 'sch') {
-        const months = selectedMonths();
-        manifest = S.normalize(await S.uploadSchedule(GH, token, p.bytes, months, p.name));
-        file = 'schedules/' + months.join('_') + '.pdf';
-      } else {
-        const year = Number($('teamYear').value);
-        manifest = S.normalize(await S.uploadTeams(GH, token, p.bytes, year, p.name));
-        file = 'teams/' + year + '.pdf';
-      }
-      // この端末ではすぐに表示する（ほかの端末は公開ページの更新を待つ）
-      docs[file] = Promise.resolve(p.parsed);
-      picked[kind] = null;
-      $(kind === 'sch' ? 'schFile' : 'teamFile').value = '';
-      if (kind === 'sch') $('schMonths').hidden = true;
-      $(kind === 'sch' ? 'schFileName' : 'teamFileName').textContent = 'PDFを選ぶ';
-      $(kind === 'sch' ? 'schCheck' : 'teamCheck').innerHTML = '<ul><li class="ok">✓ アップロードしました。ほかの端末やスマホには1〜2分で反映されます。</li></ul>';
-      renderStatus();
-      renderAlerts();
-      render();
-    } catch (e) {
-      alert(e.message);
-      button.disabled = false;
-    } finally {
-      button.textContent = label;
-    }
-  }
-  $('schUpload').onclick = () => doUpload($('schUpload'), 'sch');
-  $('teamUpload').onclick = () => doUpload($('teamUpload'), 'team');
 
   $('saveToken').onclick = async () => {
     const raw = $('token').value;
@@ -455,6 +208,317 @@
     $('tokenStatus').textContent = 'この端末から鍵を消しました。';
   };
 
+  // ---------------- 読み取り（OCR） ----------------
+
+  let ocrWorker = null;
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('読み取り用の部品を読み込めませんでした（通信を確認してください）'));
+      document.head.appendChild(s);
+    });
+  }
+  async function getOcr(progress) {
+    if (ocrWorker) return ocrWorker;
+    progress(0.01, '読み取りの準備をしています（初回は少し時間がかかります）…');
+    if (!window.Tesseract) await loadScript(TESS + 'tesseract.min.js');
+    ocrWorker = await Tesseract.createWorker('jpn', 1, { workerPath: TESS + 'worker.min.js', corePath: TESS + 'core/', langPath: TESS + 'lang/', gzip: true });
+    return ocrWorker;
+  }
+
+  function setProgress(id, ratio, text) {
+    const el = $(id);
+    el.hidden = ratio == null;
+    if (ratio == null) return;
+    el.querySelector('div').style.width = Math.round(ratio * 100) + '%';
+    el.querySelector('span').textContent = text || '';
+  }
+
+  /** これまでに確定した月の「記事」を集める（読み取りの補正に使う） */
+  async function learnedPhrases() {
+    const list = manifest.schedules.slice(-3);
+    const out = new Set();
+    for (const e of list) {
+      const d = await loadJson(e.data);
+      ((d && d.days) || []).forEach((x) => x.kiji && out.add(x.kiji));
+    }
+    return [...out];
+  }
+
+  // 予定表
+  $('schFile').onchange = async () => {
+    const f = $('schFile').files[0];
+    $('schFile').value = '';
+    if (!f) return;
+    const prog = (r, t) => setProgress('schProgress', r, t);
+    try {
+      prog(0, 'ファイルを開いています…');
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const pages = await TableImage.load(f);
+      const ocr = await getOcr(prog);
+      const phrases = await learnedPhrases();
+      const results = [];
+      for (let i = 0; i < pages.length; i++) {
+        const r = await ScheduleImage.read(pages[i], ocr, (x, t) => prog((i + x) / pages.length, (pages.length > 1 ? (i + 1) + 'ページ目：' : '') + t), { phrases });
+        results.push(r);
+      }
+      prog(null);
+      openScheduleEditor({ name: f.name, bytes }, results);
+    } catch (e) {
+      prog(null);
+      alert('読み取れませんでした：' + e.message);
+    }
+  };
+
+  // 体制表
+  $('teamFile').onchange = async () => {
+    const f = $('teamFile').files[0];
+    $('teamFile').value = '';
+    if (!f) return;
+    const prog = (r, t) => setProgress('teamProgress', r, t);
+    try {
+      prog(0, 'ファイルを開いています…');
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const [page] = await TableImage.load(f);
+      const ocr = await getOcr(prog);
+      const r = await TeamsImage.read(page, ocr, prog);
+      prog(null);
+      openTeamsEditor({ name: f.name, bytes }, r);
+    } catch (e) {
+      prog(null);
+      alert('読み取れませんでした：' + e.message);
+    }
+  };
+
+  // ---------------- 確認・修正画面（予定表） ----------------
+
+  function monthOptions(selected) {
+    const t = new Date();
+    const keys = new Set([selected].filter(Boolean));
+    for (let i = -1; i <= 3; i++) {
+      const a = S.addMonths(t.getFullYear(), t.getMonth() + 1, i);
+      keys.add(S.monthKey(a.y, a.m));
+    }
+    return [...keys].sort().map((k) => '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' + monthLabel(k) + '</option>').join('');
+  }
+
+  /** 元の表から、その日の行の一部（x0〜x1）を切り出した画像 */
+  function rowImage(grid, box, x0, x1) {
+    const c = grid.canvas;
+    x0 -= 3;
+    x1 += 3;
+    const h = box.y1 - box.y0 + 8;
+    const scale = Math.min(1, 900 / (x1 - x0));
+    const out = document.createElement('canvas');
+    out.width = Math.round((x1 - x0) * scale);
+    out.height = Math.round(h * scale);
+    out.getContext('2d').drawImage(c, x0, box.y0 - 4, x1 - x0, h, 0, 0, out.width, out.height);
+    return out.toDataURL('image/jpeg', 0.75);
+  }
+
+  function hanChips(raw) {
+    const h = ScheduleImage.parseHan(raw);
+    const chips = h.teams.map((t) => '<span class="chip ' + (t.kind === '出勤' ? 'on' : 'off') + '">' + esc(t.team) + '班 ' + esc(t.kind) + '</span>');
+    if (h.teiji) chips.push('<span class="chip">全員定時</span>');
+    if (!chips.length && String(raw || '').trim()) chips.push('<span class="chip warn">読み取れない書き方です</span>');
+    return chips.join('');
+  }
+
+  let pending = null; // 確定待ちの内容
+
+  function openScheduleEditor(file, results) {
+    const today = new Date();
+    const nextKey = (() => {
+      const a = S.addMonths(today.getFullYear(), today.getMonth() + 1, 1);
+      return S.monthKey(a.y, a.m);
+    })();
+    $('confirmTitle').textContent = '予定表の確認';
+    $('confirmNote').textContent = '元の表（写真）と見比べて、違うところを直してから確定してください。オレンジの日は特に確認してください。';
+    $('confirmBody').innerHTML = results
+      .map((r, pi) => {
+        const key = r.year && r.month ? S.monthKey(r.year, r.month) : nextKey;
+        const ym = key.split('-').map(Number);
+        const cols = r.grid.cols;
+        const days = r.days
+          .map((d, di) => {
+            const warn = d.guessed || (String(d.hanRaw || '').trim() && !d.han.teams.length && !d.han.teiji);
+            const dow = WEEK[new Date(ym[0], ym[1] - 1, d.d).getDay()];
+            return (
+              '<div class="day-card' + (warn ? ' warn' : '') + '" data-p="' + pi + '" data-i="' + di + '">' +
+              '<div class="day-head"><b>' + d.d + '日（' + dow + '）</b><label><input type="checkbox" data-f="closed"' + (d.closed ? ' checked' : '') + '> 休校日</label></div>' +
+              '<label class="fld">記事<img class="row-img" src="' + rowImage(r.grid, d.box, cols.kiji[0], cols.kiji[1]) + '" alt=""><input data-f="kiji" value="' + esc(d.kiji) + '"></label>' +
+              '<label class="fld">摘要<img class="row-img" src="' + rowImage(r.grid, d.box, cols.tekiyo[0], cols.tekiyo[1]) + '" alt=""><input data-f="tekiyo" value="' + esc(d.tekiyo) + '"></label>' +
+              '<label class="fld">班・振休等／フォーク<img class="row-img" src="' + rowImage(r.grid, d.box, cols.han[0], cols.fork[cols.fork.length - 1][1]) + '" alt=""><input data-f="han" value="' + esc(ScheduleImage.hanText(d.han) || d.hanRaw || '') + '" placeholder="例：(2)出　③休　定時"></label>' +
+              '<div class="chips">' + hanChips(ScheduleImage.hanText(d.han) || d.hanRaw) + (d.guessed ? '<span class="chip warn">番号は推定です</span>' : '') + '</div>' +
+              '<div class="fork-edit">' +
+              ScheduleImage.FORK_LABELS.map((lab, fi) => '<label>' + esc(lab) + '<select data-f="fork" data-k="' + fi + '">' + ['', '学', '技'].map((v) => '<option' + (d.fork[fi] === v ? ' selected' : '') + ' value="' + v + '">' + (v || '－') + '</option>').join('') + '</select></label>').join('') +
+              '</div></div>'
+            );
+          })
+          .join('');
+        return (
+          '<section class="card page" data-p="' + pi + '">' +
+          '<label class="field">何月の予定表か' + (r.year ? '' : '（読み取れなかったので選んでください）') + '<select data-f="month">' + monthOptions(key) + '</select></label>' +
+          days + '</section>'
+        );
+      })
+      .join('');
+    $('confirmBody').querySelectorAll('input[data-f=han]').forEach((inp) => {
+      inp.oninput = () => (inp.closest('.day-card').querySelector('.chips').innerHTML = hanChips(inp.value));
+    });
+    pending = { type: 'schedule', file, results };
+    $('confirmSave').disabled = false;
+    $('confirm').scrollTop = 0;
+    openSheet('confirm');
+  }
+
+  function collectSchedule() {
+    const months = [];
+    $('confirmBody').querySelectorAll('section.page').forEach((sec) => {
+      const month = sec.querySelector('select[data-f=month]').value;
+      const days = [...sec.querySelectorAll('.day-card')].map((card, i) => {
+        const v = (f) => card.querySelector('[data-f=' + f + ']');
+        const fork = [...card.querySelectorAll('select[data-f=fork]')].map((s) => s.value);
+        return {
+          d: i + 1,
+          closed: v('closed').checked,
+          kiji: v('kiji').value.trim(),
+          tekiyo: v('tekiyo').value.trim(),
+          han: ScheduleImage.parseHan(v('han').value),
+          fork,
+        };
+      });
+      months.push({ month, data: { days } });
+    });
+    return months;
+  }
+
+  // ---------------- 確認・修正画面（体制表） ----------------
+
+  function memberRow(m) {
+    m = m || { mark: '', name: '', surname: '', role: '', quals: '' };
+    const sur = m.surname || (m.name ? L.guessSurname(m.name) : '');
+    return (
+      '<div class="member">' +
+      '<select data-f="mark">' + ['', '◎', '○'].map((x) => '<option' + (m.mark === x ? ' selected' : '') + ' value="' + x + '">' + (x || '－') + '</option>').join('') + '</select>' +
+      '<input data-f="name" value="' + esc(m.name) + '" placeholder="氏名">' +
+      '<input data-f="surname" value="' + esc(sur) + '" placeholder="名字（表示）" title="アプリに表示する名字">' +
+      '<button class="del" type="button" aria-label="削除">✕</button>' +
+      '<input data-f="role" value="' + esc(m.role) + '" placeholder="担当" list="roleList">' +
+      '<input data-f="quals" value="' + esc(m.quals) + '" placeholder="資格">' +
+      '</div>'
+    );
+  }
+
+  function teamCard(t) {
+    return (
+      '<section class="card team-edit"><div class="team-head"><input data-f="team" value="' + esc(t.name) + '"><span>' + t.members.length + '人</span></div>' +
+      '<div class="members">' + t.members.map(memberRow).join('') + '</div>' +
+      '<button class="add" type="button">＋ 人を追加</button></section>'
+    );
+  }
+
+  function openTeamsEditor(file, r) {
+    const t = new Date();
+    const fy = r.year || S.fiscalYear(t) + (t.getMonth() + 1 === 3 ? 1 : 0);
+    $('confirmTitle').textContent = '体制表の確認';
+    $('confirmNote').textContent = '元の体制表と見比べて、名前の漢字・◎（責任者）・○（副責任者）を確認してください。アプリには「名字」欄の文字が表示されます（名字と名前の区切りが違っていたら直してください）。';
+    $('confirmBody').innerHTML =
+      '<section class="card"><label class="field">年度' + (r.year ? '' : '（読み取れなかったので選んでください）') + '<select data-f="year">' +
+      [fy - 1, fy, fy + 1].map((y) => '<option value="' + y + '"' + (y === fy ? ' selected' : '') + '>' + y + '年度（' + y + '年4月〜' + (y + 1) + '年3月）</option>').join('') +
+      '</select></label></section>' +
+      '<datalist id="roleList">' + TeamsImage.KNOWN_ROLES.map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist>' +
+      '<div id="teamCards">' + r.teams.map(teamCard).join('') + '</div>' +
+      '<button class="add wide" type="button" id="addTeam">＋ 班を追加</button>';
+    const wire = () => {
+      $('confirmBody').querySelectorAll('.del').forEach((b) => (b.onclick = () => b.closest('.member').remove()));
+      $('confirmBody').querySelectorAll('.member input[data-f=name]').forEach((inp) => {
+        inp.onchange = () => {
+          const sur = inp.closest('.member').querySelector('[data-f=surname]');
+          if (!sur.value) sur.value = L.guessSurname(inp.value);
+        };
+      });
+      $('confirmBody').querySelectorAll('.team-edit .add').forEach((b) => (b.onclick = () => {
+        b.previousElementSibling.insertAdjacentHTML('beforeend', memberRow());
+        wire();
+      }));
+    };
+    $('addTeam').onclick = () => {
+      $('teamCards').insertAdjacentHTML('beforeend', teamCard({ name: ($('teamCards').children.length + 1) + '班', members: [] }));
+      wire();
+    };
+    wire();
+    pending = { type: 'teams', file };
+    $('confirmSave').disabled = false;
+    $('confirm').scrollTop = 0;
+    openSheet('confirm');
+  }
+
+  function collectTeams() {
+    const year = Number($('confirmBody').querySelector('select[data-f=year]').value);
+    const teams = [...$('confirmBody').querySelectorAll('.team-edit')]
+      .map((sec) => ({
+        name: sec.querySelector('[data-f=team]').value.trim(),
+        members: [...sec.querySelectorAll('.member')]
+          .map((row) => {
+            const v = (f) => row.querySelector('[data-f=' + f + ']').value.trim();
+            return { name: v('name'), surname: v('surname') || L.guessSurname(v('name')), role: v('role'), mark: v('mark'), quals: v('quals') };
+          })
+          .filter((m) => m.name),
+      }))
+      .filter((t) => t.name);
+    return { year, data: { teams } };
+  }
+
+  // ---------------- 確定（アップロード） ----------------
+
+  $('closeConfirm').onclick = () => {
+    if (confirm('確認中の内容を破棄して閉じますか？')) {
+      pending = null;
+      closeSheet('confirm');
+    }
+  };
+
+  $('confirmSave').onclick = async () => {
+    if (!pending) return;
+    const token = S.getToken();
+    if (!token) {
+      alert('先に、設定の「GitHubの鍵」を入れて「保存して確認」を押してください。（確認中の内容はそのまま残ります）');
+      return;
+    }
+    const btn = $('confirmSave');
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'アップロード中…';
+    try {
+      if (pending.type === 'schedule') {
+        const months = collectSchedule();
+        const dup = months.map((x) => x.month).filter((k, i, a) => a.indexOf(k) !== i);
+        if (dup.length) throw new Error(monthLabel(dup[0]) + 'が2回選ばれています。月を確認してください。');
+        manifest = S.normalize(await S.uploadSchedule(GH, token, pending.file, months));
+        months.forEach((x) => (jsonCache['data/schedules/' + x.month + '.json'] = Promise.resolve(x.data)));
+      } else {
+        const { year, data } = collectTeams();
+        if (!data.teams.length) throw new Error('班が1つもありません。');
+        manifest = S.normalize(await S.uploadTeams(GH, token, pending.file, year, data));
+        jsonCache['data/teams/' + year + '.json'] = Promise.resolve(data);
+      }
+      pending = null;
+      closeSheet('confirm');
+      renderStatus();
+      renderAlerts();
+      render();
+      alert('確定しました。ほかの端末やスマホには1〜2分で反映されます。');
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  };
+
   // ---------------- 日付の操作・自動更新 ----------------
 
   function move(days) {
@@ -470,19 +534,18 @@
   };
 
   // 開きっぱなしでも、日付が変わったら今日の予定に切り替える。
-  // 1時間ごとに読み込み直して、新しくアップロードされた予定表も反映する（設定を開いている間は除く）。
+  // 1時間ごとに読み込み直す（設定・確認画面を開いている間は除く）。
   let lastDay = new Date().toDateString();
   const openedAt = Date.now();
   setInterval(() => {
     const nowDay = new Date().toDateString();
-    if ($('settings').hidden && (nowDay !== lastDay || Date.now() - openedAt > 60 * 60 * 1000)) {
+    if ($('settings').hidden && $('confirm').hidden && (nowDay !== lastDay || Date.now() - openedAt > 60 * 60 * 1000)) {
       lastDay = nowDay;
       location.href = location.pathname;
     }
   }, 60 * 1000);
 
   // ---------------- ホーム画面に追加（アプリとして使う） ----------------
-  // 案内は出さない。インストールできるように Service Worker だけ登録する。
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }

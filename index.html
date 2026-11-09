@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <meta name="robots" content="noindex, nofollow">
   <title>今日の勤務予定</title>
-  <link rel="stylesheet" href="css/style.css?v=20261109d">
+  <link rel="stylesheet" href="css/style.css?v=20261109g">
 </head>
 <body>
   <header>
@@ -34,22 +34,23 @@
 
   <main>
     <div id="alerts"></div>
-    <p class="loading" id="loading">勤務表を読み込み中…</p>
-    <div class="summary" id="summary"></div>
-    <div class="team-summary" id="teamSummary"></div>
-    <section id="lists" hidden>
-      <h2>出勤</h2>
-      <ul class="list" id="work"></ul>
-      <h2>休み</h2>
-      <ul class="list off" id="off"></ul>
-    </section>
+    <p class="loading" id="loading">予定表を読み込み中…</p>
     <p class="message" id="message" hidden></p>
-
-    <details id="pdfBox" hidden>
-      <summary>予定表PDFで確認する（今日の列に色付け）</summary>
-      <div class="pdf-wrap" id="pdfWrap"></div>
-      <a id="pdfLink" target="_blank" rel="noopener">PDFを開く</a>
-    </details>
+    <section id="day" hidden>
+      <div class="badges" id="badges"></div>
+      <div class="team-status" id="teamStatus"></div>
+      <div class="info" id="kijiBox"><h3>記事</h3><p id="kiji"></p></div>
+      <div class="info" id="tekiyoBox"><h3>摘要</h3><p id="tekiyo"></p></div>
+      <div class="info" id="forkBox"><h3>フォーク</h3><ul id="fork"></ul></div>
+      <div id="people">
+        <h2>出勤 <span id="workCount"></span></h2>
+        <ul class="list" id="work"></ul>
+        <h2>休み <span id="offCount"></span></h2>
+        <ul class="list off" id="off"></ul>
+      </div>
+      <p class="desc center" id="noTeams" hidden>体制表をアップロードすると、出勤・休みの人の一覧が出ます。</p>
+      <p class="desc center"><a id="sourceLink" target="_blank" rel="noopener">元の予定表を見る</a></p>
+    </section>
   </main>
 
   <footer><span id="source"></span></footer>
@@ -68,28 +69,22 @@
 
     <section class="card">
       <h3>予定表のアップロード</h3>
-      <p class="desc">予定表（PDF）を選ぶと、何月の予定表かを自動で読み取ります。2か月分が1つのPDFになっていても、そのまま選んでください。</p>
+      <p class="desc">行事予定表の<b>PDFか写真</b>を選ぶと、自動で読み取ります。読み取った内容を確認・修正してから「確定」してください。2か月分のPDFもそのまま選べます。</p>
       <label class="file">
-        <input type="file" id="schFile" accept="application/pdf,.pdf">
-        <span id="schFileName">PDFを選ぶ</span>
+        <input type="file" id="schFile" accept="application/pdf,.pdf,image/*">
+        <span>予定表を選ぶ（PDF・写真）</span>
       </label>
-      <div class="months" id="schMonths" hidden></div>
-      <div class="check" id="schCheck"></div>
-      <button class="primary" id="schUpload" disabled>アップロード</button>
+      <div class="progress" id="schProgress" hidden><div></div><span></span></div>
     </section>
 
     <section class="card">
-      <h3>班編成表のアップロード</h3>
-      <p class="desc">班は年度ごと（4月）に変わります。<b>毎年4月中に</b>その年度の班編成表（PDF）をアップロードしてください。</p>
-      <label class="field">年度
-        <select id="teamYear"></select>
-      </label>
+      <h3>体制表（班編成）のアップロード</h3>
+      <p class="desc">班は年度ごと（4月）に変わります。<b>毎年4月中に</b>その年度の体制表（PDF・写真）をアップロードしてください。</p>
       <label class="file">
-        <input type="file" id="teamFile" accept="application/pdf,.pdf">
-        <span id="teamFileName">PDFを選ぶ</span>
+        <input type="file" id="teamFile" accept="application/pdf,.pdf,image/*">
+        <span>体制表を選ぶ（PDF・写真）</span>
       </label>
-      <div class="check" id="teamCheck"></div>
-      <button class="primary" id="teamUpload" disabled>アップロード</button>
+      <div class="progress" id="teamProgress" hidden><div></div><span></span></div>
     </section>
 
     <section class="card">
@@ -106,6 +101,19 @@
     <p class="desc center"><a href="https://github.com/akira-1229/Staff-Schedule/blob/main/はじめに_やること.md" target="_blank" rel="noopener">使い方・設定手順</a></p>
   </div>
 
+  <!-- 読み取り結果の確認・修正 -->
+  <div class="sheet" id="confirm" hidden>
+    <div class="sheet-head">
+      <h2 id="confirmTitle">読み取り結果の確認</h2>
+      <button id="closeConfirm" class="close" aria-label="閉じる">✕</button>
+    </div>
+    <p class="desc confirm-note" id="confirmNote"></p>
+    <div id="confirmBody"></div>
+    <div class="confirm-foot">
+      <button class="primary" id="confirmSave">この内容で確定してアップロード</button>
+    </div>
+  </div>
+
   <!-- 更新したら ?v= の数字を変える（スマホに古いプログラムが残らないように） -->
   <script>
     // プログラムが途中で止まったら「読み込み中」のままにせず案内を出す
@@ -117,10 +125,13 @@
     });
   </script>
   <script src="lib/pdfjs/pdf.min.js"></script>
-  <script src="config.js?v=20261109d"></script>
-  <script src="js/holidays.js?v=20261109d"></script>
-  <script src="js/pdf-schedule.js?v=20261109d"></script>
-  <script src="js/store.js?v=20261109d"></script>
-  <script src="js/app.js?v=20261109d"></script>
+  <script src="config.js?v=20261109g"></script>
+  <script src="js/holidays.js?v=20261109g"></script>
+  <script src="js/day-logic.js?v=20261109g"></script>
+  <script src="js/table-image.js?v=20261109g"></script>
+  <script src="js/schedule-image.js?v=20261109g"></script>
+  <script src="js/teams-image.js?v=20261109g"></script>
+  <script src="js/store.js?v=20261109g"></script>
+  <script src="js/app.js?v=20261109g"></script>
 </body>
 </html>

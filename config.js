@@ -8,19 +8,7 @@ window.SCHEDULE_CONFIG = {
   // アップロード先（GitHub のリポジトリ）
   github: { owner: 'akira-1229', repo: 'Staff-Schedule', branch: 'main' },
 
-  // PDFに書かれている記号の意味。
-  //   off: true のものは「休み」として下にまとめて表示します。
-  //   ここに無い記号は、PDFに書かれている文字をそのまま表示します。
-  codes: {
-    '早': { label: '早番', time: '', color: '#fde68a' },
-    '日': { label: '日勤', time: '', color: '#bfdbfe' },
-    '遅': { label: '遅番', time: '', color: '#c7d2fe' },
-    '半': { label: '半日', time: '', color: '#bbf7d0' },
-    '休': { label: '休み', off: true, color: '#e5e7eb' },
-    '公': { label: '公休', off: true, color: '#e5e7eb' },
-    '希': { label: '希望休', off: true, color: '#fecaca' },
-    '有': { label: '有給', off: true, color: '#f5d0fe' },
-    '×': { label: '休み', off: true, color: '#e5e7eb' },
-    '/': { label: '休み', off: true, color: '#e5e7eb' },
-  },
+  // 休校日の曜日（0=日 1=月 … 6=土）。予定表を読み取ったとき、この曜日に「休校日」のチェックを付ける
+  // （確認画面で日ごとに直せます）
+  closedWeekdays: [0, 1],
 };
