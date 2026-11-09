@@ -113,7 +113,7 @@
       $('work').innerHTML = groups(st.work) || '<p class="none">出勤者なし</p>';
       $('off').innerHTML = groups(st.off) || '<p class="none">休みの人はいません</p>';
     }
-    $('sourceLink').href = data.source || sch.entry.file;
+    $('sourceLink').onclick = () => openViewer(data.source || sch.entry.file, m + '月の予定表');
     $('day').hidden = false;
   }
 
@@ -181,14 +181,45 @@
 
   // ---------------- 設定 ----------------
 
+  // 開いている全画面のシート。スマホの「戻る」（Androidの戻るボタン・iPhoneのスワイプ）でも閉じられるよう履歴に積む
+  const sheetStack = [];
   function openSheet(id) {
     $(id).hidden = false;
+    $(id).scrollTop = 0;
     document.body.classList.add('no-scroll');
+    if (sheetStack[sheetStack.length - 1] !== id) {
+      sheetStack.push(id);
+      try {
+        history.pushState({ sheet: id }, '');
+      } catch (e) {
+        /* 履歴が使えない環境 */
+      }
+    }
+  }
+  function hideTopSheet() {
+    const id = sheetStack.pop();
+    if (id) $(id).hidden = true;
+    if (!sheetStack.length) document.body.classList.remove('no-scroll');
   }
   function closeSheet(id) {
-    $(id).hidden = true;
-    if ($('settings').hidden && $('confirm').hidden) document.body.classList.remove('no-scroll');
+    if (sheetStack[sheetStack.length - 1] === id) history.back(); // popstate で閉じる
+    else {
+      $(id).hidden = true;
+      const i = sheetStack.indexOf(id);
+      if (i >= 0) sheetStack.splice(i, 1);
+      if (!sheetStack.length) document.body.classList.remove('no-scroll');
+    }
   }
+  window.addEventListener('popstate', () => {
+    if (!sheetStack.length) return;
+    // 確認中の内容があるときは、うっかり戻って消えないように確かめる
+    if (sheetStack[sheetStack.length - 1] === 'confirm' && pending && !confirm('確認中の内容を破棄して閉じますか？')) {
+      history.pushState({ sheet: 'confirm' }, '');
+      return;
+    }
+    if (sheetStack[sheetStack.length - 1] === 'confirm') pending = null;
+    hideTopSheet();
+  });
   function openSettings() {
     renderStatus();
     $('token').value = S.getToken();
@@ -505,12 +536,7 @@
 
   // ---------------- 確定（アップロード） ----------------
 
-  $('closeConfirm').onclick = () => {
-    if (confirm('確認中の内容を破棄して閉じますか？')) {
-      pending = null;
-      closeSheet('confirm');
-    }
-  };
+  $('closeConfirm').onclick = () => closeSheet('confirm'); // 破棄してよいかは popstate で確かめる
 
   $('confirmSave').onclick = async () => {
     if (!pending) return;
@@ -550,6 +576,165 @@
     }
   };
 
+  // ---------------- 元の予定表を見る（アプリの中で開き、「戻る」で戻る） ----------------
+
+  async function openViewer(path, title) {
+    $('viewerTitle').textContent = title || '元の予定表';
+    const body = $('viewerBody');
+    body.classList.remove('zoom');
+    $('zoomViewer').textContent = '＋';
+    body.innerHTML = '<p class="loading">読み込み中…</p>';
+    openSheet('viewer');
+    try {
+      if (/\.pdf$/i.test(path)) {
+        const data = new Uint8Array(await (await fetch(path + '?t=' + Date.now(), { cache: 'no-store' })).arrayBuffer());
+        const doc = await pdfjsLib.getDocument({ data }).promise;
+        body.innerHTML = '';
+        for (let p = 1; p <= doc.numPages; p++) {
+          const page = await doc.getPage(p);
+          const base = page.getViewport({ scale: 1 });
+          const vp = page.getViewport({ scale: 1800 / base.width });
+          const cv = document.createElement('canvas');
+          cv.width = vp.width;
+          cv.height = vp.height;
+          await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+          body.appendChild(cv);
+        }
+      } else {
+        body.innerHTML = '<img alt="元の表" src="' + esc(path) + '">';
+      }
+    } catch (e) {
+      body.innerHTML = '<p class="message">開けませんでした：' + esc(e.message) + '</p>';
+    }
+  }
+  $('closeViewer').onclick = () => closeSheet('viewer');
+  $('zoomViewer').onclick = () => {
+    const z = $('viewerBody').classList.toggle('zoom');
+    $('zoomViewer').textContent = z ? '－' : '＋';
+  };
+
+  // ---------------- 月のカレンダー ----------------
+
+  let cal = { y: view.getFullYear(), m: view.getMonth() + 1 };
+  const CIRC = '①②③④⑤⑥⑦⑧⑨';
+
+  function hanTags(han) {
+    const out = [];
+    ((han && han.teams) || []).forEach((t) => {
+      if (t.kind === '出勤') out.push('<span class="tag on">(' + esc(t.team) + ')出</span>');
+      else if (t.kind === '振休') out.push('<span class="tag off">(' + esc(t.team) + ')休</span>');
+      else out.push('<span class="tag off">' + (CIRC[Number(t.team) - 1] || esc(t.team)) + '休</span>');
+    });
+    if (han && han.teiji) out.push('<span class="tag teiji">定時</span>');
+    return out.join('');
+  }
+
+  let calToken = 0;
+  async function renderCalendar() {
+    const token = ++calToken;
+    const { y, m } = cal;
+    $('calTitle').textContent = y + '年' + m + '月';
+    const sch = S.scheduleFor(manifest, y, m);
+    const data = sch ? await loadJson(sch.entry.data) : null;
+    if (token !== calToken) return;
+    const days = {};
+    ((data && data.days) || []).forEach((d) => (days[d.d] = d));
+    const hol = H.getHolidays(y);
+    const first = new Date(y, m - 1, 1).getDay();
+    const n = new Date(y, m, 0).getDate();
+    const today = new Date();
+    let html = WEEK.map((w, i) => '<div class="wd' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + w + '</div>').join('');
+    for (let i = 0; i < first; i++) html += '<div class="cell empty"></div>';
+    for (let d = 1; d <= n; d++) {
+      const date = new Date(y, m - 1, d);
+      const dow = date.getDay();
+      const h = hol[H.dateKey(y, m, d)];
+      const day = days[d];
+      const cls = ['cell'];
+      if (day && day.closed) cls.push('closed');
+      if (date.toDateString() === today.toDateString()) cls.push('today');
+      if (date.toDateString() === view.toDateString()) cls.push('selected');
+      const numCls = dow === 0 || h ? ' sun' : dow === 6 ? ' sat' : '';
+      let tags = '';
+      if (day) {
+        tags += hanTags(day.han);
+        if (day.closed && !((day.han && day.han.teams) || []).some((t) => t.kind === '出勤')) tags += '<span class="tag closed">休校</span>';
+        if ((day.fork || []).some(Boolean)) tags += '<span class="tag fork">フ</span>';
+      }
+      html +=
+        '<button type="button" class="' + cls.join(' ') + '" data-d="' + d + '" title="' + esc(h || '') + '">' +
+        '<span class="num' + numCls + '">' + d + (h ? '<small>祝</small>' : '') + '</span>' + tags + '</button>';
+    }
+    $('calGrid').innerHTML = html;
+    $('calNote').hidden = !!sch;
+    $('calNote').textContent = sch ? '' : y + '年' + m + '月の予定表はまだアップロードされていません。';
+    $('calGrid').querySelectorAll('.cell[data-d]').forEach((b) => {
+      b.onclick = () => {
+        view = new Date(y, m - 1, Number(b.dataset.d));
+        closeSheet('calendar');
+        render();
+      };
+    });
+  }
+  function moveMonth(k) {
+    const a = S.addMonths(cal.y, cal.m, k);
+    cal = { y: a.y, m: a.m };
+    renderCalendar();
+  }
+  $('openCalendar').onclick = () => {
+    cal = { y: view.getFullYear(), m: view.getMonth() + 1 };
+    renderCalendar();
+    openSheet('calendar');
+  };
+  $('calPrev').onclick = () => moveMonth(-1);
+  $('calNext').onclick = () => moveMonth(1);
+  $('closeCalendar').onclick = () => closeSheet('calendar');
+  // 左右にスワイプしても月を切り替える
+  (function swipe() {
+    let x0 = null, y0 = null;
+    $('calGrid').addEventListener('touchstart', (e) => {
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+    }, { passive: true });
+    $('calGrid').addEventListener('touchend', (e) => {
+      if (x0 == null) return;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) moveMonth(dx < 0 ? 1 : -1);
+      x0 = null;
+    });
+  })();
+
+  // ---------------- 画面の色（白・黒・スマホに合わせる） ----------------
+
+  const THEME_KEY = 'staff-schedule-theme';
+  function currentTheme() {
+    try {
+      return localStorage.getItem(THEME_KEY) || 'auto';
+    } catch (e) {
+      return 'auto';
+    }
+  }
+  function applyTheme(mode) {
+    if (mode === 'light' || mode === 'dark') document.documentElement.dataset.theme = mode;
+    else delete document.documentElement.dataset.theme;
+    try {
+      localStorage.setItem(THEME_KEY, mode);
+    } catch (e) {
+      /* 保存できない環境 */
+    }
+    $('themeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.theme === mode));
+    // スマホの上の帯の色もあわせる
+    const dark = mode === 'dark' || (mode === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#1e3a8a' : '#2563eb');
+  }
+  $('themeSeg').querySelectorAll('button').forEach((b) => (b.onclick = () => applyTheme(b.dataset.theme)));
+  applyTheme(currentTheme());
+  if (window.matchMedia) {
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => currentTheme() === 'auto' && applyTheme('auto');
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+  }
+
   // ---------------- 日付の操作・自動更新 ----------------
 
   function move(days) {
@@ -570,7 +755,7 @@
   const openedAt = Date.now();
   setInterval(() => {
     const nowDay = new Date().toDateString();
-    if ($('settings').hidden && $('confirm').hidden && (nowDay !== lastDay || Date.now() - openedAt > 60 * 60 * 1000)) {
+    if (!sheetStack.length && (nowDay !== lastDay || Date.now() - openedAt > 60 * 60 * 1000)) {
       lastDay = nowDay;
       location.href = location.pathname;
     }
