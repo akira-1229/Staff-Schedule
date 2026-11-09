@@ -61,7 +61,7 @@
 
   function getToken() {
     try {
-      return localStorage.getItem(TOKEN_KEY) || '';
+      return cleanToken(localStorage.getItem(TOKEN_KEY)) || '';
     } catch (e) {
       return '';
     }
@@ -75,8 +75,27 @@
     }
   }
 
-  function api(cfg, token, path, opts) {
+  /**
+   * 貼り付けた鍵から、空白・改行・見えない文字を取り除く（全角英数字は半角にする）
+   * 鍵の形（github_pat_… / ghp_…）でなければ空文字を返す
+   */
+  function cleanToken(t) {
+    const s = String(t || '')
+      .normalize('NFKC')
+      .replace(/[^A-Za-z0-9_]/g, '');
+    return /^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$/.test(s) ? s : '';
+  }
+
+  async function api(cfg, token, path, opts) {
     opts = opts || {};
+    try {
+      return await apiFetch(cfg, token, path, opts);
+    } catch (e) {
+      throw new Error('GitHubに接続できませんでした。電波の良い所でもう一度試すか、アプリを閉じて開き直してください。（' + e.message + '）');
+    }
+  }
+
+  function apiFetch(cfg, token, path, opts) {
     return fetch('https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + path, {
       method: opts.method || 'GET',
       headers: Object.assign(
@@ -197,6 +216,7 @@
     scheduleFor,
     teamsFor,
     getToken,
+    cleanToken,
     setToken,
     checkToken,
     uploadSchedule,

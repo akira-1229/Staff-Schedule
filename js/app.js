@@ -428,12 +428,18 @@
   $('teamUpload').onclick = () => doUpload($('teamUpload'), 'team');
 
   $('saveToken').onclick = async () => {
-    const t = $('token').value.trim();
+    const raw = $('token').value;
     const st = $('tokenStatus');
-    if (!t) {
+    if (!raw.trim()) {
       st.textContent = '鍵を入力してください。';
       return;
     }
+    const t = S.cleanToken(raw);
+    if (!t) {
+      st.textContent = '！ 鍵の形が正しくありません。「github_pat_」で始まる文字を、最初から最後まですべてコピーして貼り付けてください。';
+      return;
+    }
+    $('token').value = t;
     st.textContent = '確認中…';
     try {
       await S.checkToken(GH, t);
