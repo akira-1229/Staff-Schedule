@@ -13,13 +13,25 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <meta name="robots" content="noindex, nofollow">
   <title>今日の勤務予定</title>
-  <link rel="stylesheet" href="css/style.css?v=20261109h">
+  <script>
+    // 画面の色（白・黒・スマホに合わせる）を、表示の前に決めておく（白い画面がちらつかないように）
+    try {
+      var th = localStorage.getItem('staff-schedule-theme');
+      if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th;
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="css/style.css?v=20261110a">
 </head>
 <body>
   <header>
     <div class="top-row">
       <div class="facility" id="title"></div>
-      <button id="openSettings" class="gear" aria-label="設定">⚙</button>
+      <div class="top-btns">
+        <button id="openCalendar" class="round" aria-label="月のカレンダー">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17.5h2M11 17.5h2"/></svg>
+        </button>
+        <button id="openSettings" class="round" aria-label="設定">⚙</button>
+      </div>
     </div>
     <div class="date-row">
       <button id="prev" aria-label="前の日">◀</button>
@@ -49,7 +61,7 @@
         <div class="pgroups off" id="off"></div>
       </div>
       <p class="desc center" id="noTeams" hidden>体制表をアップロードすると、出勤・休みの人の一覧が出ます。</p>
-      <p class="desc center"><a id="sourceLink" target="_blank" rel="noopener">元の予定表を見る</a></p>
+      <p class="desc center"><button type="button" class="link-btn" id="sourceLink">元の予定表を見る</button></p>
     </section>
   </main>
 
@@ -88,6 +100,15 @@
     </section>
 
     <section class="card">
+      <h3>画面の色</h3>
+      <div class="seg" id="themeSeg">
+        <button type="button" data-theme="auto">スマホに合わせる</button>
+        <button type="button" data-theme="light">白</button>
+        <button type="button" data-theme="dark">黒</button>
+      </div>
+    </section>
+
+    <section class="card">
       <h3>GitHubの鍵（アップロードする人だけ）</h3>
       <p class="desc">アップロードには、GitHub で作った鍵（トークン）が必要です。鍵はこの端末の中だけに保存されます。<b>ホーム画面のアプリとブラウザでは保存場所が別</b>なので、ふだん使う方（アプリ）で入れてください。作り方は「はじめに_やること.md」を見てください。</p>
       <input type="password" id="token" class="text" placeholder="github_pat_…" autocomplete="off">
@@ -99,6 +120,38 @@
     </section>
 
     <p class="desc center"><a href="https://github.com/akira-1229/Staff-Schedule/blob/main/はじめに_やること.md" target="_blank" rel="noopener">使い方・設定手順</a></p>
+  </div>
+
+  <!-- 月のカレンダー -->
+  <div class="sheet" id="calendar" hidden>
+    <div class="sheet-head">
+      <div class="cal-nav">
+        <button id="calPrev" aria-label="前の月">◀</button>
+        <h2 id="calTitle"></h2>
+        <button id="calNext" aria-label="次の月">▶</button>
+      </div>
+      <button id="closeCalendar" class="close" aria-label="閉じる">✕</button>
+    </div>
+    <div class="cal" id="calGrid"></div>
+    <p class="desc center cal-note" id="calNote" hidden></p>
+    <div class="cal-legend">
+      <span><b class="tag on">(2)出</b>休日出勤</span>
+      <span><b class="tag off">(1)休</b>振休</span>
+      <span><b class="tag off">③休</b>班休</span>
+      <span><b class="tag teiji">定時</b>全員定時</span>
+      <span><b class="tag fork">フ</b>フォーク</span>
+    </div>
+    <p class="desc center">日付を押すと、その日の予定を表示します。</p>
+  </div>
+
+  <!-- 元の予定表 -->
+  <div class="sheet" id="viewer" hidden>
+    <div class="sheet-head">
+      <button id="closeViewer" class="back">← 戻る</button>
+      <h2 id="viewerTitle">元の予定表</h2>
+      <button id="zoomViewer" class="close" aria-label="拡大・縮小">＋</button>
+    </div>
+    <div class="viewer-body" id="viewerBody"></div>
   </div>
 
   <!-- 読み取り結果の確認・修正 -->
@@ -125,13 +178,13 @@
     });
   </script>
   <script src="lib/pdfjs/pdf.min.js"></script>
-  <script src="config.js?v=20261109h"></script>
-  <script src="js/holidays.js?v=20261109h"></script>
-  <script src="js/day-logic.js?v=20261109h"></script>
-  <script src="js/table-image.js?v=20261109h"></script>
-  <script src="js/schedule-image.js?v=20261109h"></script>
-  <script src="js/teams-image.js?v=20261109h"></script>
-  <script src="js/store.js?v=20261109h"></script>
-  <script src="js/app.js?v=20261109h"></script>
+  <script src="config.js?v=20261110a"></script>
+  <script src="js/holidays.js?v=20261110a"></script>
+  <script src="js/day-logic.js?v=20261110a"></script>
+  <script src="js/table-image.js?v=20261110a"></script>
+  <script src="js/schedule-image.js?v=20261110a"></script>
+  <script src="js/teams-image.js?v=20261110a"></script>
+  <script src="js/store.js?v=20261110a"></script>
+  <script src="js/app.js?v=20261110a"></script>
 </body>
 </html>
