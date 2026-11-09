@@ -5,12 +5,11 @@ window.SCHEDULE_CONFIG = {
   // 画面の上に出る名前
   title: '指導員 勤務予定',
 
-  // 勤務表PDFの置き場所とファイル名。{yyyy}=年, {mm}=月（2けた）
-  //   例：2026年12月 → 2026-12.pdf
-  pdfPath: '{yyyy}-{mm}.pdf',
+  // アップロード先（GitHub のリポジトリ）
+  github: { owner: 'akira-1229', repo: 'Staff-Schedule', branch: 'main' },
 
-  // この日を過ぎても次月のPDFが無いと、画面にお知らせを出す
-  // （メール通知の日付は .github/workflows/next-month-reminder.yml）
+  // この日を過ぎても次月の予定表が無いと、画面にお知らせを出す
+  // （メール・アプリ通知の日付は scripts/reminders.js の REMIND_AFTER_DAY）
   remindAfterDay: 15,
 
   // PDFに書かれている記号の意味。

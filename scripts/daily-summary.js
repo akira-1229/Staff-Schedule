@@ -14,6 +14,7 @@ const pdfjs = require(path.join(ROOT, 'lib/pdfjs/pdf.min.js'));
 pdfjs.GlobalWorkerOptions.workerSrc = path.join(ROOT, 'lib/pdfjs/pdf.worker.min.js');
 const P = require(path.join(ROOT, 'js/pdf-schedule.js'));
 const H = require(path.join(ROOT, 'js/holidays.js'));
+const S = require(path.join(ROOT, 'js/store.js'));
 
 // config.js はブラウザ用（window.SCHEDULE_CONFIG = ...）なので、window を用意して読み込む
 global.window = {};
@@ -28,23 +29,9 @@ function todayJST() {
   return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
 }
 
-async function main() {
-  const dateStr = process.argv[2] || todayJST();
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dow = new Date(y, m - 1, d).getDay();
-  const holiday = H.getHolidays(y)[H.dateKey(y, m, d)] || '';
-  const dayLabel = m + '/' + d + '（' + WEEK[dow] + '）' + (holiday ? ' ' + holiday : '');
-  const month = y + '-' + pad(m);
-  const file = path.join(ROOT, (CFG.pdfPath || '{yyyy}-{mm}.pdf').replace('{yyyy}', y).replace('{mm}', pad(m)));
-  const out = (o) => process.stdout.write(JSON.stringify(Object.assign({ month, date: dateStr }, o)) + '\n');
-
-  if (!fs.existsSync(file)) {
-    return out({ status: 'nopdf', title: dayLabel, body: '⚠ ' + path.basename(file) + ' がまだアップされていないため、' + dayLabel + ' の予定を読み取れません。' });
-  }
-
-  const data = new Uint8Array(fs.readFileSync(file));
+async function readItems(file) {
   const doc = await pdfjs.getDocument({
-    data,
+    data: new Uint8Array(fs.readFileSync(file)),
     verbosity: 0,
     cMapUrl: path.join(ROOT, 'lib/pdfjs/cmaps') + '/',
     cMapPacked: true,
@@ -57,14 +44,39 @@ async function main() {
       if (it.str) items.push({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width, h: it.height || Math.abs(it.transform[3]), page: p });
     });
   }
+  return items;
+}
 
-  const res = P.extractDay(items, d);
+async function main() {
+  const dateStr = process.argv[2] || todayJST();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  const holiday = H.getHolidays(y)[H.dateKey(y, m, d)] || '';
+  const dayLabel = m + '/' + d + '（' + WEEK[dow] + '）' + (holiday ? ' ' + holiday : '');
+  const month = y + '-' + pad(m);
+  const out = (o) => process.stdout.write(JSON.stringify(Object.assign({ month, date: dateStr }, o)) + '\n');
+  const manifest = S.normalize(JSON.parse(fs.readFileSync(path.join(ROOT, S.MANIFEST), 'utf8')));
+
+  const sch = S.scheduleFor(manifest, y, m);
+  if (!sch || !fs.existsSync(path.join(ROOT, sch.entry.file))) {
+    return out({ status: 'nopdf', title: dayLabel, body: '⚠ ' + y + '年' + m + '月の予定表がまだアップロードされていないため、' + dayLabel + ' の予定を読み取れません。' });
+  }
+  const items = await readItems(path.join(ROOT, sch.entry.file));
+
+  // 班編成表（その年度のもの。無ければ前の年度）
+  let teams = null;
+  const t = S.teamsFor(manifest, new Date(y, m - 1, d));
+  if (t && fs.existsSync(path.join(ROOT, t.entry.file))) teams = P.extractTeams(await readItems(path.join(ROOT, t.entry.file)));
+
+  const res = P.extractDay(items, d, sch);
   if (!res) {
-    return out({ status: 'unreadable', title: dayLabel, body: '⚠ ' + path.basename(file) + ' から ' + dayLabel + ' の予定を読み取れませんでした。ページでPDFを確認してください。' });
+    return out({ status: 'unreadable', title: dayLabel, body: '⚠ 予定表（' + (sch.entry.name || sch.entry.file) + '）から ' + dayLabel + ' の予定を読み取れませんでした。ページでPDFを確認してください。' });
   }
 
-  const rows = res.rows.map((r) => ({ name: r.name.replace(/\s+/g, ' '), s: P.classify(r.value, CFG.codes) }));
-  const work = rows.filter((r) => !r.s.off);
+  const rows = res.rows.map((r) => ({ name: r.name.replace(/\s+/g, ' '), s: P.classify(r.value, CFG.codes), team: teams ? P.teamOf(teams, r.name) : '' }));
+  const order = teams ? teams.teams.map((x) => x.name) : [];
+  const rank = (r) => (r.team ? order.indexOf(r.team) : 999);
+  const work = rows.filter((r) => !r.s.off).sort((a, b) => rank(a) - rank(b));
   const off = rows.filter((r) => r.s.off);
   const status = work.length ? 'ok' : 'closed';
 
@@ -73,7 +85,8 @@ async function main() {
   const summary = dayLabel + ' 出勤' + work.length + '人：' + (work.map(short).join(' ') || 'なし');
 
   const lines = ['### ' + dayLabel + ' の勤務予定', '', '**出勤 ' + work.length + '人**'];
-  work.forEach((r) => lines.push('- ' + r.s.code + '　' + r.name + '　' + r.s.label + (r.s.time ? '　' + r.s.time : '')));
+  if (order.length) lines.push(order.map((tn) => tn + ' ' + work.filter((r) => r.team === tn).length + '人').join('・'), '');
+  work.forEach((r) => lines.push('- ' + r.s.code + '　' + r.name + (r.team ? '（' + r.team + '）' : '') + '　' + r.s.label + (r.s.time ? '　' + r.s.time : '')));
   if (!work.length) lines.push('- なし');
   lines.push('', '**休み ' + off.length + '人**');
   off.forEach((r) => lines.push('- ' + r.name + '　' + r.s.label));
