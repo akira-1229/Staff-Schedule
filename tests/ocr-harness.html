@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><body>
+<!-- tests/ocr.test.js から使う。画像の読み取りをブラウザで動かす -->
+<script src="../lib/pdfjs/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = '../lib/pdfjs/pdf.worker.min.js';</script>
+<script src="../lib/tesseract/tesseract.min.js"></script>
+<script src="../js/table-image.js"></script>
+<script src="../js/schedule-image.js"></script>
+<script src="../js/teams-image.js"></script>
+<script>
+  async function readFixture(file, kind) {
+    const blob = await (await fetch('fixtures/' + file)).blob();
+    const [page] = await TableImage.load(new File([blob], file, { type: blob.type }));
+    const base = new URL('../lib/tesseract/', location.href).href;
+    const ocr = await Tesseract.createWorker('jpn', 1, { workerPath: base + 'worker.min.js', corePath: base + 'core/', langPath: base + 'lang/', gzip: true });
+    try {
+      if (kind === 'teams') return await TeamsImage.read(page, ocr);
+      const r = await ScheduleImage.read(page, ocr);
+      return { year: r.year, month: r.month, days: r.days.map((d) => ({ d: d.d, closed: d.closed, kiji: d.kiji, tekiyo: d.tekiyo, han: ScheduleImage.hanText(d.han), fork: d.fork })) };
+    } finally {
+      await ocr.terminate();
+    }
+  }
+</script>
