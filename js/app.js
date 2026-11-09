@@ -134,10 +134,10 @@
           '<div class="pg-names">' +
           ps.map((p) => {
             const info = [p.name, p.role, p.quals, p.special].filter(Boolean).join('　');
-            // 班と違う動きの人（振休の日に出勤など）は、本人の出勤・休みの色にして「出」「休」を付ける
+            // 班と違う動きの人（振休の日に出勤など）は、本人の出勤・休みの色にする
             const diff = p.working !== t.working;
             return '<button type="button" class="pname' + (diff ? (p.working ? ' p-on' : ' p-off') : '') + '" title="' + esc(info) + '" data-info="' + esc(info) + '">' +
-              (p.mark ? '<i>' + esc(p.mark) + '</i>' : '') + esc(p.display || p.name) + (diff ? '<sup>' + (p.working ? '出' : '休') + '</sup>' : '') + '</button>';
+              (p.mark ? '<i>' + esc(p.mark) + '</i>' : '') + esc(p.display || p.name) + '</button>';
           }).join('') +
           '</div></div>'
         );
