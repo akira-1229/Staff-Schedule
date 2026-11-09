@@ -1,4 +1,12 @@
 {
-  "schedules": [],
+  "schedules": [
+    {
+      "month": "2026-11",
+      "data": "data/schedules/2026-11.json",
+      "file": "schedules/2026-11.pdf",
+      "name": "2026-11.pdf",
+      "uploadedAt": "2026-11-09T10:05:34.593Z"
+    }
+  ],
   "teams": []
 }
