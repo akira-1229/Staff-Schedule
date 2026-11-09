@@ -110,21 +110,52 @@
     if (hasPeople) {
       $('workCount').textContent = st.work.length + '人';
       $('offCount').textContent = st.off.length + '人';
-      $('work').innerHTML = st.work.map(person).join('') || '<li class="none">出勤者なし</li>';
-      $('off').innerHTML = st.off.map(person).join('') || '<li class="none">休みの人はいません</li>';
+      $('work').innerHTML = groups(st.work) || '<p class="none">出勤者なし</p>';
+      $('off').innerHTML = groups(st.off) || '<p class="none">休みの人はいません</p>';
     }
     $('sourceLink').href = data.source || sch.entry.file;
     $('day').hidden = false;
   }
 
-  function person(p) {
-    return (
-      '<li><span class="badge">' + esc(String(p.team || '').replace('班', '')) + '</span>' +
-      '<span class="who"><b>' + (p.mark ? '<i>' + esc(p.mark) + '</i>' : '') + esc(p.display || p.name) + '</b>' +
-      '<small>' + esc([p.role, p.quals].filter(Boolean).join('　')) + '</small></span>' +
-      '<span class="time">' + esc(p.reason || p.team || '') + '</span></li>'
-    );
+  /** 班ごとに、名字を小さな枠で横に並べる（タップすると担当・資格が出る） */
+  function groups(list) {
+    const order = [];
+    const by = {};
+    list.forEach((p) => {
+      const k = p.team || '';
+      if (!by[k]) {
+        by[k] = [];
+        order.push(k);
+      }
+      by[k].push(p);
+    });
+    return order
+      .map((k) => {
+        const ps = by[k];
+        const reason = ps[0].reason ? '<em>' + esc(ps[0].reason) + '</em>' : '';
+        return (
+          '<div class="pgroup"><div class="pg-head"><b>' + esc(k) + '</b>' + reason + '<span>' + ps.length + '人</span></div>' +
+          '<div class="pg-names">' +
+          ps.map((p) => {
+            const info = [p.name, p.role, p.quals].filter(Boolean).join('　');
+            return '<button type="button" class="pname" title="' + esc(info) + '" data-info="' + esc(info) + '">' + (p.mark ? '<i>' + esc(p.mark) + '</i>' : '') + esc(p.display || p.name) + '</button>';
+          }).join('') +
+          '</div></div>'
+        );
+      })
+      .join('');
   }
+
+  // 名前をタップすると、フルネーム・担当・資格を下に表示
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.pname');
+    document.querySelectorAll('.pinfo').forEach((x) => x.remove());
+    if (!b) return;
+    const box = document.createElement('div');
+    box.className = 'pinfo';
+    box.textContent = b.dataset.info;
+    b.closest('.pgroup').appendChild(box);
+  });
 
   function showMessage(text) {
     $('message').textContent = text;
