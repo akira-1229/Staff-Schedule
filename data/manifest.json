@@ -8,5 +8,13 @@
       "uploadedAt": "2026-11-09T10:05:34.593Z"
     }
   ],
-  "teams": []
+  "teams": [
+    {
+      "year": 2026,
+      "data": "data/teams/2026.json",
+      "file": "teams/2026.jpg",
+      "name": "IMG_2038.jpeg",
+      "uploadedAt": "2026-11-09T10:05:58.198Z"
+    }
+  ]
 }
