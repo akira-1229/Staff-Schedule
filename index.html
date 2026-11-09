@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="robots" content="noindex, nofollow">
   <title>今日の勤務予定</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261109">
 </head>
 <body>
   <header>
@@ -100,11 +100,21 @@
     <p class="desc center"><a href="https://github.com/akira-1229/Staff-Schedule/blob/main/はじめに_やること.md" target="_blank" rel="noopener">使い方・設定手順</a></p>
   </div>
 
+  <!-- 更新したら ?v= の数字を変える（スマホに古いプログラムが残らないように） -->
+  <script>
+    // プログラムが途中で止まったら「読み込み中」のままにせず案内を出す
+    window.addEventListener('error', function (e) {
+      var el = document.getElementById('loading');
+      if (!el || window.__appStarted) return;
+      el.hidden = false;
+      el.innerHTML = '読み込みに失敗しました。<br>アプリを一度閉じて開き直すか、ページを再読み込みしてください。<br><small>' + (e.message || '') + '</small>';
+    });
+  </script>
   <script src="lib/pdfjs/pdf.min.js"></script>
-  <script src="config.js"></script>
-  <script src="js/holidays.js"></script>
-  <script src="js/pdf-schedule.js"></script>
-  <script src="js/store.js"></script>
-  <script src="js/app.js"></script>
+  <script src="config.js?v=20261109"></script>
+  <script src="js/holidays.js?v=20261109"></script>
+  <script src="js/pdf-schedule.js?v=20261109"></script>
+  <script src="js/store.js?v=20261109"></script>
+  <script src="js/app.js?v=20261109"></script>
 </body>
 </html>

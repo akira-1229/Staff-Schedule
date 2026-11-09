@@ -475,6 +475,7 @@
     }
   }, 60 * 1000);
 
+  window.__appStarted = true;
   loadManifest().then(() => {
     renderAlerts();
     render();
