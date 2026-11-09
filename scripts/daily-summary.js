@@ -13,6 +13,11 @@ const S = require(path.join(ROOT, 'js/store.js'));
 const L = require(path.join(ROOT, 'js/day-logic.js'));
 const H = require(path.join(ROOT, 'js/holidays.js'));
 
+// config.js はブラウザ用（window.SCHEDULE_CONFIG = ...）なので、window を用意して読み込む
+global.window = global.window || {};
+require(path.join(ROOT, 'config.js'));
+const CFG = global.window.SCHEDULE_CONFIG || {};
+
 const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -42,7 +47,7 @@ function main() {
 
   const t = S.teamsFor(manifest, date);
   const teams = t && readJson(t.entry.data);
-  const st = L.dayStatus(day, teams);
+  const st = L.dayStatus(day, teams, { reverseMembers: CFG.reverseMembers });
 
   const lines = ['### ' + label + ' の予定', ''];
   if (st.closed) lines.push('**休校日**');

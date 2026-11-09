@@ -158,7 +158,8 @@
       const circled = !!m[1];
       const team = m[1] || m[2] || m[3];
       const kind = m[4] === '出' ? '出勤' : circled ? '班休' : '振休';
-      out.teams.push({ team, kind });
+      // 「②出」（丸数字の出）は「(2)出」と区別して記録する（近藤さんなど、扱いが変わる人がいるため）
+      out.teams.push(kind === '出勤' && circled ? { team, kind, circled: true } : { team, kind });
     }
     return out;
   }
@@ -188,7 +189,9 @@
   /** 読み取った内容を、確認画面で編集する文字に戻す */
   function hanText(h) {
     const CIRC = '①②③④⑤⑥⑦⑧⑨';
-    const parts = (h.teams || []).map((t) => (t.kind === '班休' ? CIRC[Number(t.team) - 1] + '休' : '(' + t.team + ')' + (t.kind === '出勤' ? '出' : '休')));
+    const parts = (h.teams || []).map((t) =>
+      t.kind === '班休' ? CIRC[Number(t.team) - 1] + '休' : t.circled ? CIRC[Number(t.team) - 1] + '出' : '(' + t.team + ')' + (t.kind === '出勤' ? '出' : '休')
+    );
     if (h.teiji) parts.push('定時');
     return parts.join(' ');
   }
