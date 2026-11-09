@@ -110,31 +110,27 @@
     if (hasPeople) {
       $('workCount').textContent = st.work.length + '人';
       $('offCount').textContent = st.off.length + '人';
-      $('work').innerHTML = groups(st.work) || '<p class="none">出勤者なし</p>';
-      $('off').innerHTML = groups(st.off) || '<p class="none">休みの人はいません</p>';
+      $('teamsPeople').innerHTML = groups(st);
     }
     $('sourceLink').onclick = () => openViewer(data.source || sch.entry.file, m + '月の予定表');
     $('day').hidden = false;
   }
 
   /** 班ごとに、名字を小さな枠で横に並べる（タップすると担当・資格が出る） */
-  function groups(list) {
-    const order = [];
-    const by = {};
-    list.forEach((p) => {
-      const k = p.team || '';
-      if (!by[k]) {
-        by[k] = [];
-        order.push(k);
-      }
-      by[k].push(p);
-    });
-    return order
-      .map((k) => {
-        const ps = by[k];
-        const reason = ps[0].reason ? '<em>' + esc(ps[0].reason) + '</em>' : '';
+  /**
+   * 班ごとの枠を、出勤・休みに関係なく 1班・2班・3班… の順で並べる
+   * （出勤は青、休みは赤の枠。見出しに理由。名前をタップすると担当・資格が出る）
+   */
+  function groups(st) {
+    const people = st.work.concat(st.off);
+    const teams = st.teams.slice().sort((a, b) => (Number(L.teamNo(a.name)) || 99) - (Number(L.teamNo(b.name)) || 99));
+    return teams
+      .map((t) => {
+        const ps = people.filter((p) => p.team === t.name);
+        const label = t.working ? t.reason || '出勤' : t.reason || '休み';
         return (
-          '<div class="pgroup"><div class="pg-head"><b>' + esc(k) + '</b>' + reason + '<span>' + ps.length + '人</span></div>' +
+          '<div class="pgroup ' + (t.working ? 'on' : 'off') + '"><div class="pg-head"><b>' + esc(t.name) + '</b>' +
+          '<em>' + esc(label) + '</em><span>' + ps.length + '人</span></div>' +
           '<div class="pg-names">' +
           ps.map((p) => {
             const info = [p.name, p.role, p.quals].filter(Boolean).join('　');

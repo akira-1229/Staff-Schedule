@@ -189,14 +189,15 @@ h2 { font-size: 15px; color: var(--muted); margin: 18px 4px 8px; }
 #people h2 span { color: var(--text); font-weight: 700; }
 .pgroups { display: grid; gap: 6px; }
 .pgroup { background: var(--card); border-radius: 10px; padding: 6px 8px 8px; box-shadow: var(--shadow); border-left: 5px solid var(--accent); }
-.pgroups.off .pgroup { border-left-color: var(--off-strong); background: var(--off-card); }
+.pgroup.off { border-left-color: var(--off-strong); background: var(--off-card); }
 .pg-head { display: flex; align-items: baseline; gap: 6px; font-size: 13px; margin-bottom: 4px; }
 .pg-head b { font-size: 14px; }
-.pg-head em { font-style: normal; color: var(--off-strong); font-weight: 700; }
+.pg-head em { font-style: normal; font-weight: 700; color: var(--on-strong); }
+.pgroup.off .pg-head em { color: var(--off-strong); }
 .pg-head span { margin-left: auto; color: var(--muted); }
 .pg-names { display: flex; flex-wrap: wrap; gap: 4px; }
 .pname { font-size: 15px; font-weight: 600; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--on-line); background: var(--on-bg); color: var(--on-fg); cursor: pointer; line-height: 1.4; }
-.pgroups.off .pname { border-color: var(--off-line); background: var(--off-bg); color: var(--off-fg); font-weight: 500; }
+.pgroup.off .pname { border-color: var(--off-line); background: var(--off-bg); color: var(--off-fg); font-weight: 500; }
 .pname i { font-style: normal; color: var(--mark); margin-right: 1px; }
 .pinfo { margin-top: 6px; font-size: 13px; color: var(--muted); background: var(--soft); border-radius: 6px; padding: 4px 8px; }
 .pgroups .none { color: var(--muted); text-align: center; margin: 4px 0; }
