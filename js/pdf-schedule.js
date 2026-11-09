@@ -248,6 +248,29 @@
     };
   }
 
+  /**
+   * PDFに入っている予定表の月を、表の上の「2026年12月」などから調べる
+   * 返り値: [{ month: 12, year: 2026 | null }]（表の順。月が書かれていない表は含まない）
+   */
+  function detectMonths(items) {
+    items = prepare(items);
+    const pages = [...new Set(items.map((it) => it.page))].sort((a, b) => a - b);
+    const out = [];
+    pages.forEach((page) => {
+      findTables(groupRows(items.filter((it) => it.page === page)), page).forEach((t) => {
+        if (t.month && !out.some((o) => o.month === t.month && o.year === (t.year || null))) out.push({ month: t.month, year: t.year || null });
+      });
+    });
+    return out;
+  }
+
+  /** 表（日付の見出し）がいくつあるか */
+  function countTables(items) {
+    items = prepare(items);
+    const pages = [...new Set(items.map((it) => it.page))];
+    return pages.reduce((n, page) => n + findTables(groupRows(items.filter((it) => it.page === page)), page).length, 0);
+  }
+
   /** PDFのセルの文字を、config.js の codes で意味づけする */
   function classify(value, codes) {
     const v = (value || '').trim();
@@ -386,7 +409,7 @@
     return '';
   }
 
-  const api = { extractDay, extractTeams, teamOf, groupRows, splitItems, classify, normName };
+  const api = { extractDay, detectMonths, countTables, extractTeams, teamOf, groupRows, splitItems, classify, normName };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PdfSchedule = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -53,6 +53,13 @@ async function load(file) {
     });
   }
 
+  // 何月の予定表かの自動判別
+  const months = async (f) => P.detectMonths(await load(f)).map((x) => (x.year || '') + '-' + x.month);
+  assert.deepStrictEqual(await months('sample-2026-11.pdf'), ['2026-11']);
+  assert.deepStrictEqual(await months('sample-2months-pages.pdf'), ['2026-12', '2027-1']);
+  assert.deepStrictEqual(await months('sample-2months-stacked.pdf'), ['2026-12', '2027-1']);
+  assert.deepStrictEqual(await months('sample-2months-notitle.pdf'), []);
+
   // 班編成表（縦並び / 横並び / 見出し形式）
   const staff = ['山田 太郎', '佐藤 花子', '鈴木 一郎', '高橋 美咲', '田中 健'];
   const expectTeams = {
