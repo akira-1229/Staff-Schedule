@@ -230,7 +230,7 @@
   function renderStatus() {
     const t = new Date();
     const lines = [];
-    for (let i = 0; i <= 2; i++) {
+    for (let i = 0; i <= MAX_AHEAD; i++) {
       const a = S.addMonths(t.getFullYear(), t.getMonth() + 1, i);
       const sch = S.scheduleFor(manifest, a.y, a.m);
       lines.push([a.y + '年' + a.m + '月の予定表', sch ? '<a href="' + esc(sch.entry.file) + '" target="_blank" rel="noopener">登録済み</a>' : '未登録', !!sch]);
@@ -355,10 +355,18 @@
 
   // ---------------- 確認・修正画面（予定表） ----------------
 
+  // 予定表を提出できるのは、今月から何か月後の分までか（config.js の maxMonthsAhead）
+  const MAX_AHEAD = Number(CFG.maxMonthsAhead) || 4;
+  function latestKey() {
+    const t = new Date();
+    const a = S.addMonths(t.getFullYear(), t.getMonth() + 1, MAX_AHEAD);
+    return S.monthKey(a.y, a.m);
+  }
+
   function monthOptions(selected) {
     const t = new Date();
     const keys = new Set([selected].filter(Boolean));
-    for (let i = -1; i <= 3; i++) {
+    for (let i = -1; i <= MAX_AHEAD; i++) {
       const a = S.addMonths(t.getFullYear(), t.getMonth() + 1, i);
       keys.add(S.monthKey(a.y, a.m));
     }
@@ -553,6 +561,8 @@
         const months = collectSchedule();
         const dup = months.map((x) => x.month).filter((k, i, a) => a.indexOf(k) !== i);
         if (dup.length) throw new Error(monthLabel(dup[0]) + 'が2回選ばれています。月を確認してください。');
+        const tooFar = months.find((x) => x.month > latestKey());
+        if (tooFar) throw new Error(monthLabel(tooFar.month) + 'の予定表はまだ提出できません。提出できるのは' + monthLabel(latestKey()) + '分（' + MAX_AHEAD + 'か月後）までです。');
         manifest = S.normalize(await S.uploadSchedule(GH, token, pending.file, months));
         months.forEach((x) => (jsonCache['data/schedules/' + x.month + '.json'] = Promise.resolve(x.data)));
       } else {
