@@ -90,12 +90,24 @@
       dow: cell(ki - 1),
       kiji: cell(ki),
       tekiyo: cell(ki + 1),
-      han: cell(ki + 2),
     };
-    // フォーク：残りの範囲を6等分（線が見つかればそれを使う）
-    const fx = xs.slice(ki + 3);
-    if (fx.length === 7) out.fork = fx.slice(1).map((x, i) => [fx[i], x]);
-    else {
+    // フォーク：右端に同じくらいの幅の細い列が6つ並ぶ。見つかればそれを使う
+    const n = widths.length;
+    let forkStart = -1;
+    if (n - 6 > ki + 1) {
+      const fw = widths.slice(n - 6);
+      const avg = fw.reduce((x, y) => x + y, 0) / 6;
+      if (fw.every((w) => Math.abs(w - avg) < avg * 0.35)) forkStart = n - 6;
+    }
+    if (forkStart >= 0) {
+      out.fork = widths.slice(forkStart).map((_, i) => cell(forkStart + i));
+      // 班・振休等：摘要とフォークの間で一番広い列（「年末の交通安全県民運動」のような細い列が間に入る月がある）
+      let hi = ki + 2;
+      for (let i = ki + 2; i < forkStart; i++) if (widths[i] > widths[hi]) hi = i;
+      out.han = cell(Math.min(hi, forkStart - 1));
+    } else {
+      // 線が見つからないとき：摘要の右が班、残りを6等分してフォーク
+      out.han = cell(ki + 2);
       const a = xs[ki + 3], b = xs[xs.length - 1];
       const step = (b - a) / 6;
       out.fork = FORK_LABELS.map((_, i) => [a + i * step, a + (i + 1) * step]);
@@ -113,8 +125,15 @@
     const k = 2;
     const im = upscale(T.crop(c, dateCol[0] + 4, top, dateCol[1] - 4, bottom, 0), k);
     await ocr.setParameters({ tessedit_pageseg_mode: '6', tessedit_char_whitelist: '0123456789' });
-    const { data } = await ocr.recognize(margin(blackWhite(im), 24));
     const votes = {};
+    // 白黒にした画像で読み、数字がほとんど読めなければ手を加えない画像でも読む
+    const words = (await ocr.recognize(margin(blackWhite(copyCanvas(im)), 24))).data.words || [];
+    const usable = (ws) => ws.filter((wd) => Number((wd.text || '').replace(/\D/g, '')) && wd.confidence >= 40).length;
+    let data = { words };
+    if (usable(words) < 5) {
+      const alt = (await ocr.recognize(margin(im, 24))).data.words || [];
+      if (usable(alt) > usable(words)) data = { words: alt };
+    }
     (data.words || []).forEach((wd) => {
       const n = Number((wd.text || '').replace(/\D/g, ''));
       if (!n || n > 31 || wd.confidence < 40) return;
@@ -236,8 +255,15 @@
   async function ocrText(ocr, canvas, params, minConf, raw) {
     if (params) await ocr.setParameters(params);
     let data;
-    if (raw) data = (await ocr.recognize(canvas)).data;
-    else {
+    if (raw) {
+      // 手を加えない画像 → 確かさが低ければ、余白を付けたもの・白黒にしたものでも読んで良い方
+      data = (await ocr.recognize(canvas)).data;
+      for (const make of [() => margin(canvas, 24), () => margin(blackWhite(copyCanvas(canvas), 170), 24)]) {
+        if (data.confidence >= 60) break;
+        const alt = (await ocr.recognize(make())).data;
+        if (alt.confidence > data.confidence) data = alt;
+      }
+    } else {
       // 白黒にしたもの → 確かさが低ければ、灰色のままのものでも読んで、良い方を使う
       data = (await ocr.recognize(margin(blackWhite(copyCanvas(canvas)), 24))).data;
       const alts = [() => margin(canvas, 24), () => margin(blackWhite(copyCanvas(canvas), 170), 24)];
@@ -379,7 +405,15 @@
         best = p;
       }
     });
-    return best && bestD <= Math.max(2, Math.round([...norm(best)].length * 0.3)) ? best : text;
+    // 記事欄で普通に使う文字だけでできていれば、読み取りどおりに使う（「二輪」「大二」の違いなど内容を変えない）。
+    // 記事欄に出てこない文字（疲・淡・浅・護 など読み間違いに多い字）が入っているときだけ手直しする
+    const vocab = new Set([...(phrases || KNOWN_PHRASES).join('')].map((ch) => ch.normalize('NFKC')));
+    if ([...t].every((ch) => vocab.has(ch))) return text;
+    // 読み間違いの手直しだけにする：読み間違いは文字が入れ替わるだけで長さは変わらない。
+    // 長さが違う（「大二・」が無いなど、内容が違う）ときは置き換えない
+    if (!best) return text;
+    const lenDiff = Math.abs([...t].length - [...norm(best)].length);
+    return lenDiff <= 1 && bestD <= Math.max(2, Math.round([...norm(best)].length * 0.3)) ? best : text;
   }
 
   /** この表でよく出る言葉の読み間違いを直す */
@@ -394,10 +428,20 @@
     [/二[輪論倫]/g, '二輪'],
     [/[初][講護]/g, '初講'],
     [/[原][講護]/g, '原講'],
+    [/元[呈且旦目]/g, '元旦'],
+    [/[修脩][夫険俊後]/g, '修検'],
+    [/大[こニ二][こニ](?=[・)）])/g, '大二'],
+    [/大二ニ/g, '大二'],
+    [/[ー一-]般/g, '一般'],
+    [/[人八]校申/g, '入校申'],
+    [/(\d)\s*[ごこ〜~～-]\s*(\d)/g, '$1〜$2'],
+    [/_/g, ' '],
     [/[。．]+$/g, ''],
   ];
   function fixText(t) {
     let s = String(t || '').replace(/\|/g, '');
+    // 日本語の文字の間に入った空白（「春分の 日」など）は取る
+    s = s.replace(/([^\x00-\x7f])\s+(?=[^\x00-\x7f])/g, '$1');
     FIXES.forEach(([re, to]) => (s = s.replace(re, to)));
     return s.trim();
   }
@@ -430,7 +474,10 @@
     let ym = null;
     if (grid.rows.length) {
       const titleArea = T.crop(c, w * 0.2, 0, w * 0.8, grid.rows[0], 0);
-      ym = parseYearMonth(await ocrText(ocr, titleArea, { tessedit_pageseg_mode: '6' }));
+      // 題名は大きな文字なので、まず手を加えずに読む（白黒にするとスキャンでは崩れることがある）。だめなら加工して読む
+      // （読み取りの部品は使い回すので、前の「学・技だけ」などの設定が残らないよう、使える文字の制限を毎回外す）
+      ym = parseYearMonth(await ocrText(ocr, titleArea, { tessedit_pageseg_mode: '6', tessedit_char_whitelist: '' }, 0, true)) ||
+        parseYearMonth(await ocrText(ocr, titleArea, { tessedit_pageseg_mode: '6', tessedit_char_whitelist: '' }));
     }
     const days = ym ? new Date(ym.year, ym.month, 0).getDate() : null;
 
@@ -462,6 +509,47 @@
       return clean === false ? im : cleanLines(im);
     };
     const closedDays = (root.SCHEDULE_CONFIG && root.SCHEDULE_CONFIG.closedWeekdays) || [0, 1];
+    // 曜日の丸囲み（休校日）を見つける：丸があるセルは黒い部分がはっきり多い。
+    // 「丸あり」と「丸なし」の差がはっきり分かれるとき（スキャンなど）は丸で決め、
+    // 分かれないとき（写真の写りが悪いなど）は曜日（closedWeekdays）で決める
+    const dowInk = [];
+    for (let i = 0; i < count; i++) dowInk.push(T.ink(c, cols.dow[0], lineAt(i), cols.dow[1], lineAt(i + 1)));
+    const circled = (() => {
+      const sorted = dowInk.slice().sort((a, b) => a - b);
+      let gap = 0, cut = 0;
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] - sorted[i - 1] > gap) {
+          gap = sorted[i] - sorted[i - 1];
+          cut = (sorted[i] + sorted[i - 1]) / 2;
+        }
+      }
+      const low = sorted.filter((v) => v < cut), high = sorted.filter((v) => v >= cut);
+      if (!low.length || !high.length || high.length > count * 0.6) return null;
+      const lowMax = low[low.length - 1], highMin = high[0];
+      return highMin > lowMax * 1.6 && gap > 0.04 ? cut : null;
+    })();
+    if (root.__ocrDebug) root.__ocrDebug.push(['circled', circled, dowInk.map((v) => +v.toFixed(3))]);
+
+    /**
+     * フォークの欄（「学」「技」の1文字）：小さな1文字は、切り取り方や拡大のしかたで読めたり読めなかったりするので、
+     * 大きさ・切り取り方を変えて何回か読み、いちばん確かな答えを使う
+     */
+    async function readFork(x, y0, y1) {
+      const base = T.crop(c, x[0] + 7, y0 + 7, x[1] - 7, y1 - 7, 0);
+      if ((inkOf(base) * base.width * base.height) / (base.height * base.height) < 0.02) return '';
+      await ocr.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: '学技' });
+      let best = { v: '', conf: 0 };
+      for (const pad of [7, 9, 5]) {
+        for (const k of [3, 2, 4]) {
+          const im = upscale(T.crop(c, x[0] + 7, y0 + pad, x[1] - 7, y1 - pad, 0), k);
+          const { data } = await ocr.recognize(im);
+          const v = /学/.test(data.text) ? '学' : /技/.test(data.text) ? '技' : '';
+          if (v && data.confidence > best.conf) best = { v, conf: data.confidence };
+          if (best.conf >= 80) return best.v;
+        }
+      }
+      return best.conf >= 50 ? best.v : '';
+    }
 
     const out = [];
     for (let i = 0; i < count; i++) {
@@ -482,17 +570,14 @@
       let kiji = snap(kijiRaw, phrases);
       if (kiji === kijiRaw && lastConf < 45) kiji = '';
       const tekiyo = fixText(await read1(cols.tekiyo, { tessedit_pageseg_mode: '6', tessedit_char_whitelist: '' }, { name: 'tekiyo', scale: 3, minConf: 40 }));
-      const hanRaw = await read1(cols.han, { tessedit_pageseg_mode: '7', tessedit_char_whitelist: '()（）0123456789①②③④⑤⑥⑦⑧⑨⑴⑵⑶⑷⑸⑹⑺⑻⑼出休定時' }, { name: 'han', scale: 3 });
+      const hanRaw = await read1(cols.han, { tessedit_pageseg_mode: '7', tessedit_char_whitelist: '()（）0123456789①②③④⑤⑥⑦⑧⑨⑴⑵⑶⑷⑸⑹⑺⑻⑼出休定時校日' }, { name: 'han', scale: 3 });
       const fork = [];
-      for (const fx of cols.fork) {
-        // 「学」「技」の横線を罫線と間違えて消さないよう、線の除去はしない
-        const v = await read1(fx, { tessedit_pageseg_mode: '8', tessedit_char_whitelist: '学技' }, { name: 'fork', scale: 3, minInk: 0, minConf: 60, clean: false });
-        fork.push(/学/.test(v) ? '学' : /技/.test(v) ? '技' : '');
-      }
+      for (const fx of cols.fork) fork.push(await readFork(fx, y0, y1));
       const date = ym ? new Date(ym.year, ym.month - 1, i + 1) : null;
       out.push({
         d: i + 1,
-        closed: date ? closedDays.includes(date.getDay()) : false,
+        // 丸囲みが見分けられればそれで、だめなら曜日で。「休校日」と書いてあれば休校日
+        closed: /休校/.test(hanRaw) || (circled != null ? dowInk[i] >= circled : date ? closedDays.includes(date.getDay()) : false),
         kiji,
         tekiyo,
         hanRaw,
