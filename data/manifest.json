@@ -8,6 +8,13 @@
       "uploadedAt": "2026-11-09T10:05:34.593Z"
     },
     {
+      "month": "2026-12",
+      "data": "data/schedules/2026-12.json",
+      "file": "schedules/2026-12.pdf",
+      "name": "IMG_0003.pdf",
+      "uploadedAt": "2026-11-11T03:08:00.627Z"
+    },
+    {
       "month": "2027-02",
       "data": "data/schedules/2027-02.json",
       "file": "schedules/2027-02.pdf",
