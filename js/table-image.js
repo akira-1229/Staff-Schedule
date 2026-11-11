@@ -134,28 +134,43 @@
 
   /** 傾きを推定（横罫線がいちばんそろう角度） */
   function estimateSkew(c) {
-    const s = 600 / c.width;
+    // 縮小した画像で、横方向にそろう角度を探す（粗く探してから細かく）
+    const s = 1000 / c.width;
     const small = canvasOf(c.width * s, c.height * s);
     small.getContext('2d').drawImage(c, 0, 0, small.width, small.height);
     const m = binarize(gray(small), small.width, small.height, 21, 12);
-    const pts = [];
-    for (let y = 0; y < small.height; y++) for (let x = 0; x < small.width; x++) if (m[y * small.width + x]) pts.push([x - small.width / 2, y]);
-    let best = 0, bestScore = -1;
-    for (let a = -3; a <= 3.001; a += 0.1) {
+    const xs = [], ys = [];
+    for (let y = 0; y < small.height; y++) for (let x = 0; x < small.width; x++) if (m[y * small.width + x]) {
+      xs.push(x - small.width / 2);
+      ys.push(y);
+    }
+    const score = (a) => {
       const r = (a * Math.PI) / 180, sn = Math.sin(r), cs = Math.cos(r);
-      const hist = new Float64Array(small.height + 400);
-      for (const [x, y] of pts) {
-        const yy = Math.round(y * cs + x * sn) + 200;
+      const hist = new Float64Array(small.height + 800);
+      for (let i = 0; i < xs.length; i++) {
+        const yy = Math.round(ys[i] * cs + xs[i] * sn) + 400;
         if (yy >= 0 && yy < hist.length) hist[yy]++;
       }
-      let score = 0;
-      for (let i = 0; i < hist.length; i++) score += hist[i] * hist[i];
-      if (score > bestScore) {
-        bestScore = score;
-        best = a;
+      let sc = 0;
+      for (let i = 0; i < hist.length; i++) sc += hist[i] * hist[i];
+      return sc;
+    };
+    const search = (from, to, step, best) => {
+      let bestScore = -1;
+      for (let a = from; a <= to + 1e-9; a += step) {
+        const sc = score(a);
+        if (sc > bestScore) {
+          bestScore = sc;
+          best = a;
+        }
       }
-    }
-    return -best;
+      return best;
+    };
+    const coarse = search(-5, 5, 0.1, 0);
+    const fine = search(coarse - 0.12, coarse + 0.12, 0.02, coarse);
+    // 見つけた角度だけ回すと横線がまっすぐになる（スキャナーで少し斜めに読み込んだ場合など）
+    // ごくわずか（0.1度未満）なら回さない（回すと細い文字がぼやけるため）
+    return Math.abs(fine) < 0.1 ? 0 : Math.round(fine * 100) / 100;
   }
 
   /** 罫線の位置：長く続く黒い線のある行・列 */
