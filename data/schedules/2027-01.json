@@ -1,0 +1,605 @@
+{
+ "days": [
+  {
+   "d": 1,
+   "closed": true,
+   "kiji": "元旦",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 2,
+   "closed": true,
+   "kiji": "特休",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 3,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 4,
+   "closed": true,
+   "kiji": "特休",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 5,
+   "closed": false,
+   "kiji": "仕事初め、年頭の辞、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 6,
+   "closed": false,
+   "kiji": "入校日、修検、卒検(二輪)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 7,
+   "closed": false,
+   "kiji": "卒検(大型・中型・準中・普通・大特・大二・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 8,
+   "closed": false,
+   "kiji": "高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "9",
+      "kind": "班休"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 9,
+   "closed": false,
+   "kiji": "入校日、修検、卒検(大特・二輪・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 10,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "3",
+      "kind": "出勤"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 11,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "成人の日",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 12,
+   "closed": false,
+   "kiji": "入枝日、卒検(大型・中型・準中・普通・大特・大二・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "3",
+      "kind": "振休"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 13,
+   "closed": false,
+   "kiji": "入校日、修検、卒検(二輪)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 14,
+   "closed": false,
+   "kiji": "卒検(大型・中型・準中・普通・大特・大二・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 15,
+   "closed": false,
+   "kiji": "高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "1",
+      "kind": "班休"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 16,
+   "closed": false,
+   "kiji": "入校日、修検、卒検(大型・中型・準中・普通・大特・大二・二輪・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 17,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "1",
+      "kind": "出勤"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 18,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 19,
+   "closed": false,
+   "kiji": "入校日、卒検(大型・中型・準中・普通・大特・大二・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "1",
+      "kind": "振休"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 20,
+   "closed": false,
+   "kiji": "入校日、修検、卒検(二輪)、初講、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 21,
+   "closed": false,
+   "kiji": "卒検(大型・中型・準中・普通・大特・大二・審査)、原講、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 22,
+   "closed": false,
+   "kiji": "高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 23,
+   "closed": false,
+   "kiji": "入校日、修検、卒検(大特・二輪・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": true
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 24,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 25,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 26,
+   "closed": false,
+   "kiji": "入校日、卒検(大型・中型・準中・普通・大特・大二・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 27,
+   "closed": false,
+   "kiji": "入校日、修検、卒検(二輪)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 28,
+   "closed": false,
+   "kiji": "卒検(大型・中型・準中・普通・大特・大二・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "2",
+      "kind": "班休"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 29,
+   "closed": false,
+   "kiji": "修検、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 30,
+   "closed": false,
+   "kiji": "入校日、卒検(大型・中型・準中・普通・大特・大二・二輪・審査)、高齢講",
+   "tekiyo": "",
+   "han": {
+    "teams": [],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "d": 31,
+   "closed": true,
+   "kiji": "",
+   "tekiyo": "",
+   "han": {
+    "teams": [
+     {
+      "team": "2",
+      "kind": "出勤"
+     }
+    ],
+    "teiji": false
+   },
+   "fork": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "month": "2027-01",
+ "source": "schedules/2027-01.pdf",
+ "confirmedAt": "2026-11-11T03:08:17.427Z"
+}
