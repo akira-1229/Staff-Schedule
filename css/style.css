@@ -300,7 +300,7 @@ h2 { font-size: 15px; color: var(--muted); margin: 18px 4px 8px; }
 .cal .tag.on { background: var(--on-bg); color: var(--on-strong); }
 .cal .tag.off { background: var(--off-bg); color: var(--off-strong); }
 .cal .tag.teiji { background: var(--ok-bg); color: var(--ok); }
-.cal .tag.fork { color: var(--fork); }
+.cal .tag.fork { color: var(--fork); font-size: 10px; letter-spacing: -.06em; padding: 0 1px; text-overflow: clip; }
 .cal .tag.closed { color: var(--muted); }
 .cal-note { max-width: 640px; margin: 10px auto; }
 .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--muted); max-width: 640px; margin: 10px auto; }

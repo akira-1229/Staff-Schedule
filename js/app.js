@@ -668,7 +668,7 @@
       if (day) {
         tags += hanTags(day.han);
         if (day.closed && !((day.han && day.han.teams) || []).some((t) => t.kind === '出勤')) tags += '<span class="tag closed">休校</span>';
-        if ((day.fork || []).some(Boolean)) tags += '<span class="tag fork">フ</span>';
+        if ((day.fork || []).some(Boolean)) tags += '<span class="tag fork">フォーク</span>';
       }
       html +=
         '<button type="button" class="' + cls.join(' ') + '" data-d="' + d + '" title="' + esc(h || '') + '">' +
