@@ -87,6 +87,7 @@
 
     const st = L.dayStatus(day, teams, { reverseMembers: CFG.reverseMembers });
     document.body.dataset.dow = st.closed || holiday ? 0 : view.getDay();
+    syncThemeColor();
 
     const badges = [];
     if (st.closed) badges.push('<span class="badge-big closed">休校日</span>');
@@ -713,6 +714,13 @@
     });
   })();
 
+  /** スマホの上の帯（ブラウザの色）を、いま表示している見出しの色に合わせる */
+  function syncThemeColor() {
+    const c = getComputedStyle(document.querySelector('header')).backgroundColor;
+    const meta = document.querySelector('meta[name=theme-color]');
+    if (c && meta) meta.setAttribute('content', c);
+  }
+
   // ---------------- 画面の色（白・黒・スマホに合わせる） ----------------
 
   const THEME_KEY = 'staff-schedule-theme';
@@ -732,9 +740,7 @@
       /* 保存できない環境 */
     }
     $('themeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.theme === mode));
-    // スマホの上の帯の色もあわせる
-    const dark = mode === 'dark' || (mode === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#1e3a8a' : '#2563eb');
+    syncThemeColor();
   }
   $('themeSeg').querySelectorAll('button').forEach((b) => (b.onclick = () => applyTheme(b.dataset.theme)));
   applyTheme(currentTheme());
