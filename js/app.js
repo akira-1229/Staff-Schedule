@@ -775,6 +775,53 @@
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
+  // ---------------- 更新ボタン ----------------
+  // 最新の予定表・体制表を読み込み直す。アプリ自体が新しくなっていれば、ページごと読み込み直す
+  let toastTimer = null;
+  function toast(msg) {
+    $('toast').textContent = msg;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => ($('toast').hidden = true), 2000);
+  }
+  function currentVersion() {
+    const el = document.querySelector('script[src*="js/app.js"]');
+    const m = el && el.getAttribute('src').match(/[?&]v=([^&]+)/);
+    return m ? m[1] : '';
+  }
+  async function newerAppVersion() {
+    try {
+      const html = await (await fetch('index.html?t=' + Date.now(), { cache: 'no-store' })).text();
+      const m = html.match(/js\/app\.js\?v=([^"']+)/);
+      return m && m[1] !== currentVersion();
+    } catch (e) {
+      return false;
+    }
+  }
+  $('refresh').onclick = async () => {
+    const btn = $('refresh');
+    btn.disabled = true;
+    btn.classList.add('spinning');
+    try {
+      if (await newerAppVersion()) {
+        location.reload();
+        return;
+      }
+      Object.keys(jsonCache).forEach((k) => delete jsonCache[k]);
+      await loadManifest();
+      renderAlerts();
+      await render();
+      if (!$('calendar').hidden) await renderCalendar();
+      if (!$('settings').hidden) renderStatus();
+      toast('最新の予定に更新しました');
+    } catch (e) {
+      toast('更新できませんでした（通信を確認してください）');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('spinning');
+    }
+  };
+
   window.__appStarted = true;
   loadManifest().then(() => {
     renderAlerts();
