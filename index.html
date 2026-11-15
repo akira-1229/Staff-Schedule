@@ -2,12 +2,12 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="勤務予定">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -20,9 +20,11 @@
       if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th;
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="css/style.css?v=20261115a">
+  <link rel="stylesheet" href="css/style.css?v=20261116a">
 </head>
 <body>
+  <!-- 時計・電池の表示の後ろ（iPhoneの画面上部）を見出しと同じ色でうめる（半透明のぼかしが出ないように） -->
+  <div class="statusbar" aria-hidden="true"></div>
   <header>
     <div class="top-row">
       <div class="facility" id="title"></div>
@@ -182,13 +184,13 @@
     });
   </script>
   <script src="lib/pdfjs/pdf.min.js"></script>
-  <script src="config.js?v=20261115a"></script>
-  <script src="js/holidays.js?v=20261115a"></script>
-  <script src="js/day-logic.js?v=20261115a"></script>
-  <script src="js/table-image.js?v=20261115a"></script>
-  <script src="js/schedule-image.js?v=20261115a"></script>
-  <script src="js/teams-image.js?v=20261115a"></script>
-  <script src="js/store.js?v=20261115a"></script>
-  <script src="js/app.js?v=20261115a"></script>
+  <script src="config.js?v=20261116a"></script>
+  <script src="js/holidays.js?v=20261116a"></script>
+  <script src="js/day-logic.js?v=20261116a"></script>
+  <script src="js/table-image.js?v=20261116a"></script>
+  <script src="js/schedule-image.js?v=20261116a"></script>
+  <script src="js/teams-image.js?v=20261116a"></script>
+  <script src="js/store.js?v=20261116a"></script>
+  <script src="js/app.js?v=20261116a"></script>
 </body>
 </html>
