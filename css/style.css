@@ -131,9 +131,9 @@ header {
 }
 body[data-dow="0"] header { background: var(--header-sun); }
 body[data-dow="6"] header { background: var(--header-sat); }
-.top-row { display: flex; align-items: center; justify-content: center; position: relative; min-height: 28px; }
-.facility { font-size: 14px; opacity: .9; }
-.top-btns { position: absolute; right: -4px; top: -6px; display: flex; gap: 6px; }
+.top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.facility { font-size: 14px; opacity: .9; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-btns { display: flex; gap: 6px; flex: none; margin-right: -4px; }
 .round {
   width: 44px; height: 44px; border: 0; border-radius: 999px;
   background: rgba(255, 255, 255, .2); color: #fff; font-size: 22px; cursor: pointer;
@@ -315,3 +315,19 @@ h2 { font-size: 15px; color: var(--muted); margin: 18px 4px 8px; }
 /* 班と違う動きの人（例：班は振休・本人は出勤） */
 .pgroup .pname.p-on { border-color: var(--on-line); background: var(--on-bg); color: var(--on-fg); font-weight: 700; }
 .pgroup .pname.p-off { border-color: var(--off-line); background: var(--off-bg); color: var(--off-fg); font-weight: 500; }
+
+/* 更新ボタン */
+.pill {
+  height: 44px; padding: 0 14px 0 11px; border: 2px solid rgba(255, 255, 255, .35); border-radius: 14px;
+  background: rgba(255, 255, 255, .16); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.pill svg { width: 20px; height: 20px; }
+.pill.spinning svg { animation: spin .8s linear infinite; }
+.pill:disabled { opacity: .7; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
+  background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px; box-shadow: var(--shadow);
+}
+.toast[hidden] { display: none; }
